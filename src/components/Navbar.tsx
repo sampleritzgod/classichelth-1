@@ -168,7 +168,7 @@ export default function Navbar() {
 
               {/* WhatsApp Us Button */}
               <a
-                href="https://wa.me/919201442475"
+                href="https://wa.me/918815010090"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-full border border-primary px-5 py-2 text-sm font-medium text-primary transition-all duration-300 hover:bg-primary hover:text-white"
@@ -237,7 +237,7 @@ export default function Navbar() {
                   {isLoggedIn ? "Log Out" : "Log In"}
                 </button>
                 <a
-                  href="https://wa.me/919201442475"
+                  href="https://wa.me/918815010090"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex w-full items-center justify-center rounded-full bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary-hover"

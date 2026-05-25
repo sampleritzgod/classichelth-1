@@ -111,7 +111,7 @@ export default function Footer() {
             <p className="text-xs text-foreground/60 leading-relaxed">
               102, Shekhar Central, Palasia Square, Indore, MP 452001
               <br />
-              Ph: +91 92014 42475
+              Ph: +91 88150 10090
             </p>
           </div>
         </div>

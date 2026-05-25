@@ -66,7 +66,7 @@ export default function Contact() {
                   <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">
                     Contact Details
                   </h3>
-                  <p className="text-sm text-foreground/80">Phone: +91 92014 42475</p>
+                  <p className="text-sm text-foreground/80">Phone: +91 88150 10090</p>
                   <p className="text-sm text-foreground/80">Email: contact@u1stcreation.com</p>
                 </div>
               </div>

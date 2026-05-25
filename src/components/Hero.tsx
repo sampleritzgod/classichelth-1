@@ -55,7 +55,7 @@ export default function Hero() {
                 Book Appointment
               </a>
               <a
-                href="https://wa.me/919201442475"
+                href="https://wa.me/918815010090"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-full border border-primary px-8 py-3.5 text-sm font-semibold text-primary transition-all duration-350 hover:bg-primary/5 hover:translate-y-[-2px] w-full sm:w-auto text-center cursor-pointer"

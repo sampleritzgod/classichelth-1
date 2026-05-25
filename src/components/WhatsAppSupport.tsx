@@ -80,7 +80,7 @@ export default function WhatsAppSupport() {
               {/* CTAs */}
               <div className="flex flex-col gap-3">
                 <a
-                  href="https://wa.me/919201442475?text=Hello!%20I%20would%20like%20to%20order%20some%20Ayurvedic%20medicines%20to%20my%20home."
+                  href="https://wa.me/918815010090?text=Hello!%20I%20would%20like%20to%20order%20some%20Ayurvedic%20medicines%20to%20my%20home."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex w-full items-center justify-center gap-x-2 rounded-full bg-[#4caf50] py-3 text-xs font-semibold uppercase tracking-wider text-white shadow-md hover:bg-[#43a047] transition-all duration-300 hover:scale-102 cursor-pointer"
