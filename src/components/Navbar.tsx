@@ -89,25 +89,12 @@ export default function Navbar() {
             <div className="flex-shrink-0">
               <a href="#" className="flex items-center gap-x-3 font-serif text-xl sm:text-2xl font-bold tracking-tight text-primary">
                 {/* Official Shield + Plus + Leaf SVG */}
-                <div className="relative h-11 w-11 flex-shrink-0">
-                  <svg className="h-full w-full" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Shield outline */}
-                    <path 
-                      d="M30 22 C45 22 50 17 50 17 C50 17 55 22 70 22 C70 45 65 65 50 75 C35 65 30 45 30 22 Z" 
-                      stroke="#1e3f20" 
-                      strokeWidth="5" 
-                      strokeLinejoin="round" 
-                    />
-                    {/* Green Medical Plus */}
-                    <rect x="47" y="32" width="6" height="16" rx="1.5" fill="#1e3f20" />
-                    {/* Horizontal plus bar */}
-                    <rect x="42" y="37" width="16" height="6" rx="1.5" fill="#1e3f20" />
-                    {/* Green Leaf overlay */}
-                    <path 
-                      d="M50 73 C52 58 64 48 74 40 C84 32 87 22 83 16 C74 24 64 32 58 44 C52 56 49 66 50 73 Z" 
-                      fill="#4caf50" 
-                    />
-                  </svg>
+                <div className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-white flex items-center justify-center border border-foreground/5">
+                  <img 
+                    src="/images/u1st_logo_cropped.jpg" 
+                    alt="U 1st Creation Logo" 
+                    className="h-full w-full object-contain" 
+                  />
                 </div>
                 <span className="font-sans font-bold tracking-tight text-[#1e3f20]">
                   U <span className="text-[#4caf50]">1st</span> Creation
@@ -181,7 +168,7 @@ export default function Navbar() {
 
               {/* WhatsApp Us Button */}
               <a
-                href="https://wa.me/917898565432"
+                href="https://wa.me/919201442475"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-full border border-primary px-5 py-2 text-sm font-medium text-primary transition-all duration-300 hover:bg-primary hover:text-white"
@@ -250,7 +237,7 @@ export default function Navbar() {
                   {isLoggedIn ? "Log Out" : "Log In"}
                 </button>
                 <a
-                  href="https://wa.me/917898565432"
+                  href="https://wa.me/919201442475"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex w-full items-center justify-center rounded-full bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary-hover"

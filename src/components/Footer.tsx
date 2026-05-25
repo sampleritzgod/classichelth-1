@@ -23,21 +23,12 @@ export default function Footer() {
           <div className="lg:col-span-4 flex flex-col items-start text-left">
             <a href="#" className="flex items-center gap-x-2.5 font-serif text-lg font-bold tracking-tight text-primary mb-4">
               {/* Shield logo SVG (smaller, matching navbar) */}
-              <div className="relative h-9 w-9 flex-shrink-0">
-                <svg className="h-full w-full" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path 
-                    d="M30 22 C45 22 50 17 50 17 C50 17 55 22 70 22 C70 45 65 65 50 75 C35 65 30 45 30 22 Z" 
-                    stroke="#1e3f20" 
-                    strokeWidth="5" 
-                    strokeLinejoin="round" 
-                  />
-                  <rect x="47" y="32" width="6" height="16" rx="1.5" fill="#1e3f20" />
-                  <rect x="42" y="37" width="16" height="6" rx="1.5" fill="#1e3f20" />
-                  <path 
-                    d="M50 73 C52 58 64 48 74 40 C84 32 87 22 83 16 C74 24 64 32 58 44 C52 56 49 66 50 73 Z" 
-                    fill="#4caf50" 
-                  />
-                </svg>
+              <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg bg-white flex items-center justify-center border border-foreground/5">
+                <img 
+                  src="/images/u1st_logo_cropped.jpg" 
+                  alt="U 1st Creation Logo" 
+                  className="h-full w-full object-contain" 
+                />
               </div>
               <span className="font-sans font-bold tracking-tight text-[#1e3f20]">
                 U <span className="text-[#4caf50]">1st</span> Creation
@@ -120,7 +111,7 @@ export default function Footer() {
             <p className="text-xs text-foreground/60 leading-relaxed">
               102, Shekhar Central, Palasia Square, Indore, MP 452001
               <br />
-              Ph: +91 78985 65432
+              Ph: +91 92014 42475
             </p>
           </div>
         </div>
