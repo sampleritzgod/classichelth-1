@@ -27,12 +27,33 @@ if (process.env.NODE_ENV === "development") {
 // Security headers middleware
 app.use(helmet());
 
-// Enable CORS
+// Enable CORS (supports multiple origins and credentials)
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",")
+  : ["http://localhost:3000", "http://localhost:3000/"]; // Fallback development origins
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, postman, or curl)
+      if (!origin) return callback(null, true);
+      
+      // Check if the origin matches any of our allowed domains
+      const isAllowed = allowedOrigins.some((allowedOpt) => {
+        const cleanAllowed = allowedOpt.trim().replace(/\/$/, "");
+        const cleanOrigin = origin.trim().replace(/\/$/, "");
+        return cleanAllowed === cleanOrigin;
+      });
+
+      if (isAllowed) {
+        return callback(null, true);
+      } else {
+        return callback(new Error(`Not allowed by CORS from origin: ${origin}`), false);
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
+    optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
   })
 );
 

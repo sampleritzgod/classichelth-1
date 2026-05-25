@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { API_ENDPOINTS } from "@/config";
 
 interface Booking {
   _id: string;
@@ -26,7 +27,7 @@ export default function AdminBookings() {
       setLoading(true);
       setError(null);
       // Fetch bookings from our Node.js/Express API
-      const res = await fetch("http://localhost:5005/api/v1/appointments");
+      const res = await fetch(API_ENDPOINTS.appointments);
       if (!res.ok) {
         throw new Error(`Error: ${res.status} ${res.statusText}`);
       }
@@ -39,7 +40,7 @@ export default function AdminBookings() {
     } catch (err: any) {
       console.error(err);
       setError(
-        err.message || "Failed to connect to backend server. Make sure your server is running on http://localhost:5005."
+        err.message || "Failed to connect to backend server. Make sure your server is running."
       );
     } finally {
       setLoading(false);
