@@ -84,12 +84,12 @@ export default function Navbar() {
     <>
       <nav className="sticky top-0 z-40 w-full border-b border-foreground/5 bg-background/90 backdrop-blur-md transition-all duration-300">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
+          <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <div className="flex-shrink-0">
               <a href="#" className="flex items-center gap-x-3 font-serif text-xl sm:text-2xl font-bold tracking-tight text-primary">
                 {/* Official Shield + Plus + Leaf SVG */}
-                <div className="relative h-10 w-10 flex-shrink-0">
+                <div className="relative h-11 w-11 flex-shrink-0">
                   <svg className="h-full w-full" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                     {/* Shield outline */}
                     <path 
@@ -116,18 +116,18 @@ export default function Navbar() {
             </div>
 
             {/* Desktop Nav Links */}
-            <div className="hidden lg:flex lg:items-center lg:gap-x-7">
-              <a href="#" className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Home</a>
-              <a href="#services" className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Services</a>
-              <a href="#about" className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">About Us</a>
-              <a href="#blog" className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Blog</a>
-              <a href="#shop" className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Shop</a>
+            <div className="hidden lg:flex lg:items-center lg:gap-x-6">
+              <a href="#" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Home</a>
+              <a href="#services" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Services</a>
+              <a href="#about" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">About Us</a>
+              <a href="#blog" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Blog</a>
+              <a href="#shop" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Shop</a>
               
               {/* Notifications Trigger */}
               <div className="relative">
                 <button 
                   onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                  className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary flex items-center gap-1 cursor-pointer"
+                  className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary flex items-center gap-1 cursor-pointer"
                 >
                   Notifications
                   <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
@@ -147,15 +147,15 @@ export default function Navbar() {
                 )}
               </div>
 
-              <a href="#booking" className="text-sm font-medium text-foreground/80 transition-colors hover:text-primary relative after:absolute after:bottom-[-4px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Book Online</a>
+              <a href="#booking" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Book Online</a>
             </div>
 
             {/* Right actions */}
-            <div className="hidden md:flex md:items-center md:gap-x-5">
+            <div className="hidden md:flex md:items-center md:gap-x-4">
               {/* Profile Log In */}
               <button 
                 onClick={() => isLoggedIn ? setIsLoggedIn(false) : setIsLoginOpen(true)}
-                className="flex items-center gap-x-1.5 text-sm font-medium text-foreground/80 hover:text-primary transition-colors cursor-pointer"
+                className="flex items-center gap-x-1.5 text-sm font-medium text-foreground/90 hover:text-primary transition-colors cursor-pointer"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />

@@ -27,7 +27,7 @@ export default function Contact() {
   };
 
   return (
-    <section id="contact" className="py-20 lg:py-32 bg-accent-soft scroll-mt-20">
+    <section id="contact" className="py-16 sm:py-20 lg:py-24 bg-accent-soft scroll-mt-20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-y-16 lg:grid-cols-12 lg:gap-x-12">
           {/* Left Column: Contact Information */}
@@ -39,33 +39,49 @@ export default function Contact() {
               <h2 id="contact-title" className="text-3xl font-normal tracking-tight text-foreground sm:text-4xl font-serif mb-6">
                 Start your journey.
               </h2>
-              <p className="text-base text-foreground/80 leading-relaxed max-w-md mb-10">
+              <p className="text-base text-foreground/80 leading-relaxed max-w-md mb-8">
                 Have questions about our treatments or want to check therapist availability? Drop us a line or call our front desk directly.
               </p>
             </div>
 
             {/* Contact details list */}
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">
-                  Clinic Hours
-                </h3>
-                <p className="text-sm text-foreground/80">Monday – Friday: 9:00 AM – 6:00 PM</p>
-                <p className="text-sm text-foreground/80">Saturday: 10:00 AM – 4:00 PM</p>
+            <div className="space-y-8 my-6">
+              <div className="flex gap-x-4 items-start">
+                <svg className="h-5 w-5 text-primary mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">
+                    Clinic Hours
+                  </h3>
+                  <p className="text-sm text-foreground/80">Monday – Saturday: 10:00 AM – 7:00 PM</p>
+                  <p className="text-sm text-foreground/80">Sunday: Closed</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">
-                  Contact Details
-                </h3>
-                <p className="text-sm text-foreground/80">Phone: +1 (555) 0199</p>
-                <p className="text-sm text-foreground/80">Email: hello@classichealthclinic.com</p>
+              <div className="flex gap-x-4 items-start">
+                <svg className="h-5 w-5 text-primary mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">
+                    Contact Details
+                  </h3>
+                  <p className="text-sm text-foreground/80">Phone: +91 78985 65432</p>
+                  <p className="text-sm text-foreground/80">Email: contact@u1stcreation.com</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">
-                  Location
-                </h3>
-                <p className="text-sm text-foreground/80">742 Evergreen Terrace, Suite 100</p>
-                <p className="text-sm text-foreground/80">Springfield, OR 97477</p>
+              <div className="flex gap-x-4 items-start">
+                <svg className="h-5 w-5 text-primary mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider mb-1">
+                    Location
+                  </h3>
+                  <p className="text-sm text-foreground/80">102, Shekhar Central, Palasia Square</p>
+                  <p className="text-sm text-foreground/80">Indore, MP 452001, India</p>
+                </div>
               </div>
             </div>
           </div>
@@ -86,7 +102,7 @@ export default function Contact() {
                 <button
                   type="button"
                   onClick={() => setStatus("idle")}
-                  className="mt-6 text-sm font-semibold text-primary hover:text-primary-hover"
+                  className="mt-6 text-sm font-semibold text-primary hover:text-primary-hover cursor-pointer"
                 >
                   Send another message
                 </button>
@@ -106,7 +122,7 @@ export default function Contact() {
                     value={formData.name}
                     onChange={handleChange}
                     disabled={status === "submitting"}
-                    className="block w-full rounded-lg border border-foreground/20 bg-background px-4 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-50"
+                    className="block w-full rounded-lg border border-foreground/15 bg-background px-4 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-50 transition-all"
                   />
                 </div>
 
@@ -123,7 +139,7 @@ export default function Contact() {
                     value={formData.email}
                     onChange={handleChange}
                     disabled={status === "submitting"}
-                    className="block w-full rounded-lg border border-foreground/20 bg-background px-4 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-50"
+                    className="block w-full rounded-lg border border-foreground/15 bg-background px-4 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-50 transition-all"
                   />
                 </div>
 
@@ -139,7 +155,7 @@ export default function Contact() {
                     value={formData.message}
                     onChange={handleChange}
                     disabled={status === "submitting"}
-                    className="block w-full rounded-lg border border-foreground/20 bg-background px-4 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-50 resize-y"
+                    className="block w-full rounded-lg border border-foreground/15 bg-background px-4 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:opacity-50 resize-y transition-all"
                     placeholder="Tell us about the therapy you'd like to book..."
                   />
                 </div>
@@ -148,7 +164,7 @@ export default function Contact() {
                   <button
                     type="submit"
                     disabled={status === "submitting"}
-                    className="flex w-full items-center justify-center rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 transition-colors"
+                    className="flex w-full items-center justify-center rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:opacity-50 transition-all duration-350 hover:translate-y-[-2px] cursor-pointer"
                   >
                     {status === "submitting" ? "Sending inquiry..." : "Send Message"}
                   </button>

@@ -6,23 +6,24 @@ export default function Hero() {
   ];
 
   return (
-    <section className="relative overflow-hidden py-16 lg:py-28 bg-gradient-to-b from-background to-accent-soft/30">
+    <section className="relative overflow-hidden py-12 sm:py-16 lg:py-20 bg-gradient-to-b from-background to-accent-soft/30">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-y-12 lg:grid-cols-12 lg:gap-x-12 lg:items-center">
           {/* Left Column: Text Content */}
-          <div className="lg:col-span-7 flex flex-col items-start text-left animate-fade-up">
+          <div className="lg:col-span-6 flex flex-col items-start text-left animate-fade-up">
             <span className="inline-block text-xs font-bold tracking-widest text-primary uppercase mb-4 px-3 py-1 rounded-full bg-primary/5">
               Root-Cause Healing
             </span>
-            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl md:text-6xl font-serif leading-[1.1] mb-6">
+            <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl md:text-6xl font-serif leading-[1.15] mb-4">
               Complete Health & <br />
-              <span className="text-primary italic">Wellness Solution</span> <br />
-              Treat the Root Cause, <br />
-              <span className="underline decoration-primary/35 underline-offset-8">Not Just Symptoms</span>
+              <span className="text-primary italic">Wellness Solution</span>
             </h1>
+            <p className="text-lg sm:text-xl text-foreground/85 font-serif mb-6 leading-relaxed">
+              Treat the Root Cause, <span className="underline decoration-primary/35 underline-offset-6">Not Just Symptoms</span>
+            </p>
 
             {/* कंडीशन मार्की टिकर (Infinite Condition Scroll Ticker) */}
-            <div className="relative w-full overflow-hidden py-3 border-y border-foreground/5 bg-foreground/[0.01] my-6 rounded-lg">
+            <div className="relative w-full overflow-hidden py-3 border-y border-foreground/5 bg-foreground/[0.01] my-4 rounded-lg">
               <div className="flex w-max animate-marquee gap-x-8 whitespace-nowrap text-xs font-semibold tracking-widest text-primary/80 uppercase">
                 <div>
                   {conditions.map((c, i) => (
@@ -41,15 +42,15 @@ export default function Hero() {
               </div>
             </div>
 
-            <div className="space-y-2 text-base text-foreground/80 leading-relaxed max-w-xl mb-8">
+            <div className="space-y-1 text-sm sm:text-base text-foreground/80 leading-relaxed max-w-xl mb-8">
               <p className="font-semibold text-primary">Clinic in Indore | Online Consultation Across India</p>
-              <p className="text-sm">Specialized Care for Diabetes, BP, Thyroid, Stress & Lifestyle Disorders.</p>
+              <p className="text-xs sm:text-sm">Specialized Care for Diabetes, BP, Thyroid, Stress & Lifestyle Disorders.</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
               <a
                 href="#booking"
-                className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-primary-hover hover:scale-102 hover:shadow-lg hover:shadow-primary/10 w-full sm:w-auto text-center cursor-pointer"
+                className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-white transition-all duration-350 hover:bg-primary-hover hover:translate-y-[-2px] w-full sm:w-auto text-center cursor-pointer shadow-sm"
               >
                 Book Appointment
               </a>
@@ -57,7 +58,7 @@ export default function Hero() {
                 href="https://wa.me/917898565432"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-full border border-primary px-8 py-3.5 text-sm font-semibold text-primary transition-all duration-300 hover:bg-primary/5 hover:scale-102 w-full sm:w-auto text-center cursor-pointer"
+                className="inline-flex items-center justify-center rounded-full border border-primary px-8 py-3.5 text-sm font-semibold text-primary transition-all duration-350 hover:bg-primary/5 hover:translate-y-[-2px] w-full sm:w-auto text-center cursor-pointer"
               >
                 Chat On Whatsapp
               </a>
@@ -65,8 +66,8 @@ export default function Hero() {
           </div>
 
           {/* Right Column: Hero Image with premium styling */}
-          <div className="lg:col-span-5 flex justify-center lg:justify-end">
-            <div className="relative w-full max-w-md aspect-[4/5] sm:aspect-square overflow-hidden rounded-[2.5rem] border border-foreground/5 shadow-2xl transition-all duration-500 hover:scale-[1.01] hover:shadow-primary/5 group">
+          <div className="lg:col-span-6 flex justify-center lg:justify-end">
+            <div className="relative w-full max-w-lg aspect-[4/5] sm:aspect-square overflow-hidden rounded-[2.5rem] border border-foreground/5 shadow-2xl transition-all duration-500 hover:shadow-primary/5 group">
               {/* Overlay sheen effect */}
               <div className="absolute inset-0 z-10 bg-gradient-to-t from-primary/10 via-transparent to-transparent pointer-events-none opacity-60 group-hover:opacity-40 transition-opacity duration-300" />
               <Image
@@ -74,8 +75,8 @@ export default function Hero() {
                 alt="Modern luxury interior of U 1st Creation wellness clinic with warm wooden office furniture and plants"
                 fill
                 priority
-                className="object-cover transition-transform duration-700 group-hover:scale-105"
-                sizes="(max-width: 1024px) 100vw, 40vw"
+                className="object-cover transition-transform duration-750 group-hover:scale-103"
+                sizes="(max-width: 1024px) 100vw, 45vw"
               />
             </div>
           </div>

@@ -2,6 +2,7 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import Services from "@/components/Services";
 import About from "@/components/About";
+import Trust from "@/components/Trust";
 import WhatsAppSupport from "@/components/WhatsAppSupport";
 import Products from "@/components/Products";
 import Booking from "@/components/Booking";
@@ -17,6 +18,7 @@ export default function Home() {
         <Hero />
         <Services />
         <About />
+        <Trust />
         <WhatsAppSupport />
         <Products />
         <Booking />

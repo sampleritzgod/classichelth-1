@@ -274,10 +274,10 @@ export default function Products() {
   });
 
   return (
-    <section id="shop" className="py-20 lg:py-32 border-t border-foreground/5 scroll-mt-20 bg-background">
+    <section id="shop" className="py-16 sm:py-20 lg:py-24 border-t border-foreground/5 scroll-mt-20 bg-background">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="max-w-3xl mb-16 animate-fade-up">
+        <div className="max-w-3xl mb-12 animate-fade-up">
           <span className="text-xs font-bold tracking-widest text-primary uppercase mb-4 inline-block px-3 py-1 rounded-full bg-primary/5">
             Wellness Store
           </span>
@@ -350,12 +350,12 @@ export default function Products() {
                 <p className="text-sm text-foreground/60">No products match your active filters.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6 lg:gap-x-8">
+              <div className="grid grid-cols-1 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6 lg:gap-x-8">
                 {filteredProducts.map((product) => (
                   <div 
                     key={product.id} 
                     onClick={() => { setDetailProduct(product); setActiveDetailTab("ingredients"); }}
-                    className="flex flex-col group bg-accent-soft/10 rounded-2xl p-4 border border-foreground/5 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 cursor-pointer hover:scale-[1.01]"
+                    className="flex flex-col h-full group bg-accent-soft/10 rounded-2xl p-4 border border-foreground/5 transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-primary/20 cursor-pointer"
                   >
                     {/* Product Image */}
                     <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-5 border border-foreground/5 bg-foreground/[0.01]">
@@ -363,7 +363,7 @@ export default function Products() {
                         src={product.image}
                         alt={product.alt}
                         fill
-                        className="object-cover transition-transform duration-500 group-hover:scale-103"
+                        className="object-cover transition-transform duration-750 group-hover:scale-103"
                         loading="lazy"
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                       />
@@ -377,7 +377,7 @@ export default function Products() {
                       <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
                         {product.name}
                       </h3>
-                      <div className="flex gap-x-2.5 items-baseline">
+                      <div className="flex gap-x-2.5 items-baseline mt-auto">
                         <span className="text-xs text-foreground/40 line-through">
                           ₹{product.originalPrice}
                         </span>
@@ -391,7 +391,7 @@ export default function Products() {
                     <button
                       type="button"
                       onClick={(e) => handleAddToCart(product, e)}
-                      className={`inline-flex w-full items-center justify-center rounded-full py-2.5 text-xs font-semibold tracking-wider uppercase transition-all duration-300 focus:outline-none cursor-pointer ${
+                      className={`inline-flex w-full items-center justify-center rounded-full py-2.5 text-xs font-semibold tracking-wider uppercase transition-all duration-350 focus:outline-none cursor-pointer ${
                         addedItems[product.id]
                           ? "bg-primary text-white scale-[0.98]"
                           : "bg-primary text-white hover:bg-primary-hover shadow-sm hover:shadow-md hover:shadow-primary/10"

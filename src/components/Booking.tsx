@@ -103,10 +103,10 @@ export default function Booking() {
   };
 
   return (
-    <section id="booking" className="py-20 lg:py-32 border-t border-foreground/5 scroll-mt-20 bg-accent-soft/10">
+    <section id="booking" className="py-16 sm:py-20 lg:py-24 border-t border-foreground/5 scroll-mt-20 bg-accent-soft/10">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center mb-16 animate-fade-up">
+        <div className="text-center mb-12 animate-fade-up">
           <span className="text-xs font-bold tracking-widest text-primary uppercase mb-4 inline-block px-3 py-1 rounded-full bg-primary/5">
             Bookings
           </span>
@@ -119,7 +119,7 @@ export default function Booking() {
         </div>
 
         {/* Dynamic Category Tabs */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12 border-b border-foreground/5 pb-6">
+        <div className="flex flex-wrap justify-center gap-2 mb-10 border-b border-foreground/5 pb-6">
           {tabs.map((tab) => (
             <button
               key={tab}
@@ -148,22 +148,22 @@ export default function Booking() {
                 className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-2xl hover:bg-accent-soft/30 transition-all duration-300 gap-4 border border-transparent hover:border-foreground/5 group"
               >
                 {/* Left: Thumbnail & Info */}
-                <div className="flex items-center gap-x-4 flex-1">
+                <div className="flex items-center gap-x-4 flex-1 w-full">
                   <div className="relative h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 overflow-hidden rounded-xl border border-foreground/5 bg-foreground/[0.01]">
                     <Image
                       src={srv.image}
                       alt={srv.name}
                       fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-103"
+                      className="object-cover transition-transform duration-350 group-hover:scale-103"
                       loading="lazy"
                       sizes="64px"
                     />
                   </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors truncate">
                       {srv.name}
                     </h3>
-                    <p className="text-xs sm:text-sm text-foreground/60 mt-0.5 max-w-md">
+                    <p className="text-xs sm:text-sm text-foreground/60 mt-0.5 max-w-md line-clamp-2">
                       {srv.description}
                     </p>
                   </div>
@@ -177,7 +177,7 @@ export default function Booking() {
                   <button
                     type="button"
                     onClick={() => handleBookClick(srv)}
-                    className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-primary-hover shadow-sm transition-all duration-300 hover:scale-102 cursor-pointer"
+                    className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-primary-hover shadow-sm transition-all duration-350 hover:translate-y-[-2px] cursor-pointer"
                   >
                     Book Now
                   </button>
@@ -222,22 +222,22 @@ export default function Booking() {
 
                 <form onSubmit={handleBookingSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1">Preferred Date</label>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">Preferred Date</label>
                     <input 
                       type="date" 
                       required 
                       value={bookingDate}
                       onChange={(e) => setBookingDate(e.target.value)}
-                      className="w-full rounded-lg border border-foreground/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                      className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1">Preferred Time</label>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">Preferred Time</label>
                     <select 
                       required 
                       value={bookingTime}
                       onChange={(e) => setBookingTime(e.target.value)}
-                      className="w-full rounded-lg border border-foreground/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                      className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
                     >
                       <option value="">Choose a slot</option>
                       <option value="09:00 AM">09:00 AM</option>

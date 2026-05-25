@@ -26,10 +26,10 @@ export default function Blog() {
   ];
 
   return (
-    <section id="blog" className="py-20 lg:py-32 border-t border-foreground/5 scroll-mt-20">
+    <section id="blog" className="py-16 sm:py-20 lg:py-24 border-t border-foreground/5 scroll-mt-20">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         {/* Header */}
-        <div className="max-w-2xl mb-16">
+        <div className="max-w-2xl mb-12">
           <span className="text-xs font-semibold tracking-wider text-primary uppercase mb-3">
             Insights & Journal
           </span>

@@ -47,10 +47,10 @@ export default function Services() {
   ];
 
   return (
-    <section id="services" className="py-20 lg:py-32 border-t border-foreground/5 scroll-mt-20 bg-accent-soft/20">
+    <section id="services" className="py-16 sm:py-20 lg:py-24 border-t border-foreground/5 scroll-mt-20 bg-accent-soft/20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16 animate-fade-up">
+        <div className="text-center max-w-3xl mx-auto mb-12 animate-fade-up">
           <span className="text-xs font-bold tracking-widest text-primary uppercase mb-4 inline-block px-3 py-1 rounded-full bg-primary/5">
             Care Programs
           </span>
@@ -63,11 +63,11 @@ export default function Services() {
         </div>
 
         {/* Grid */}
-        <div className="grid grid-cols-1 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-8 lg:gap-x-12">
+        <div className="grid grid-cols-1 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6 lg:gap-x-8">
           {services.map((service, index) => (
             <div 
               key={index} 
-              className="flex flex-col group bg-background rounded-3xl p-6 border border-foreground/5 shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-primary/5 hover:scale-[1.01]"
+              className="flex flex-col h-full group bg-background rounded-3xl p-6 border border-foreground/5 shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-primary/20"
             >
               {/* Image Container */}
               <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 border border-foreground/5">
@@ -75,7 +75,7 @@ export default function Services() {
                   src={service.image}
                   alt={service.alt}
                   fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="object-cover transition-transform duration-750 group-hover:scale-103"
                   loading="lazy"
                   sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 />
