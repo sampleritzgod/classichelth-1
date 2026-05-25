@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { API_ENDPOINTS } from "@/config";
 
 interface Service {
   id: string;
@@ -69,7 +70,13 @@ export default function Booking() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [bookingDate, setBookingDate] = useState("");
   const [bookingTime, setBookingTime] = useState("");
+  const [bookingName, setBookingName] = useState("");
+  const [bookingEmail, setBookingEmail] = useState("");
+  const [bookingPhone, setBookingPhone] = useState("");
+  const [bookingMessage, setBookingMessage] = useState("");
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   const filteredServices = services.filter((srv) => {
     if (activeTab === "All Services") return true;
@@ -79,26 +86,61 @@ export default function Booking() {
   const handleBookClick = (srv: Service) => {
     setSelectedService(srv);
     setBookingSuccess(false);
+    setBookingError(null);
   };
 
-  const handleBookingSubmit = (e: React.FormEvent) => {
+  const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (bookingDate && bookingTime && selectedService) {
-      setBookingSuccess(true);
-      // Fill the contact form as a fallback integration
-      const messageInput = document.getElementById("message") as HTMLTextAreaElement | null;
-      if (messageInput) {
-        messageInput.value = `Hello, I've scheduled an appointment for "${selectedService.name}" on ${bookingDate} at ${bookingTime}. Please confirm.`;
-      }
-      setTimeout(() => {
-        setSelectedService(null);
-        setBookingSuccess(false);
-        // Scroll to contact form
-        const contactSection = document.getElementById("contact");
-        if (contactSection) {
-          contactSection.scrollIntoView({ behavior: "smooth" });
+    if (bookingDate && bookingTime && selectedService && bookingName && bookingEmail && bookingPhone) {
+      try {
+        setIsSubmitting(true);
+        setBookingError(null);
+
+        const response = await fetch(API_ENDPOINTS.appointments, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: bookingName,
+            email: bookingEmail,
+            phone: bookingPhone,
+            date: bookingDate,
+            timeSlot: bookingTime,
+            condition: selectedService.name,
+            message: bookingMessage,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          setBookingSuccess(true);
+          // Clear inputs
+          setBookingName("");
+          setBookingEmail("");
+          setBookingPhone("");
+          setBookingDate("");
+          setBookingTime("");
+          setBookingMessage("");
+          
+          // Close modal after delay
+          setTimeout(() => {
+            setSelectedService(null);
+            setBookingSuccess(false);
+          }, 3000);
+        } else {
+          const errorMsg = data.errors 
+            ? Object.values(data.errors).join(", ") 
+            : data.message || "Failed to book appointment";
+          throw new Error(errorMsg);
         }
-      }, 2000);
+      } catch (err: any) {
+        console.error("Booking Error:", err);
+        setBookingError(err.message || "Something went wrong. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -220,31 +262,93 @@ export default function Booking() {
                 <h3 className="font-serif text-xl text-primary font-semibold mb-1">Schedule Appointment</h3>
                 <p className="text-xs text-foreground/60 mb-5">Select a date and time for <strong>{selectedService.name}</strong>.</p>
 
-                <form onSubmit={handleBookingSubmit} className="space-y-4">
+                <form onSubmit={handleBookingSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                  {bookingError && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-xs leading-relaxed">
+                      ⚠️ {bookingError}
+                    </div>
+                  )}
+
                   <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">Preferred Date</label>
+                    <label className="block text-xs font-semibold text-foreground mb-1">Full Name</label>
                     <input 
-                      type="date" 
+                      type="text" 
                       required 
-                      value={bookingDate}
-                      onChange={(e) => setBookingDate(e.target.value)}
-                      className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
+                      disabled={isSubmitting}
+                      value={bookingName}
+                      onChange={(e) => setBookingName(e.target.value)}
+                      placeholder="e.g. Abhay Maheta"
+                      className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50"
                     />
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">Email Address</label>
+                      <input 
+                        type="email" 
+                        required 
+                        disabled={isSubmitting}
+                        value={bookingEmail}
+                        onChange={(e) => setBookingEmail(e.target.value)}
+                        placeholder="name@example.com"
+                        className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">Phone Number</label>
+                      <input 
+                        type="tel" 
+                        required 
+                        disabled={isSubmitting}
+                        value={bookingPhone}
+                        onChange={(e) => setBookingPhone(e.target.value)}
+                        placeholder="e.g. 8815010090"
+                        className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">Preferred Date</label>
+                      <input 
+                        type="date" 
+                        required 
+                        disabled={isSubmitting}
+                        value={bookingDate}
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">Preferred Time</label>
+                      <select 
+                        required 
+                        disabled={isSubmitting}
+                        value={bookingTime}
+                        onChange={(e) => setBookingTime(e.target.value)}
+                        className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50"
+                      >
+                        <option value="">Choose slot</option>
+                        <option value="09:00 AM">09:00 AM</option>
+                        <option value="11:00 AM">11:00 AM</option>
+                        <option value="02:00 PM">02:00 PM</option>
+                        <option value="04:00 PM">04:00 PM</option>
+                      </select>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">Preferred Time</label>
-                    <select 
-                      required 
-                      value={bookingTime}
-                      onChange={(e) => setBookingTime(e.target.value)}
-                      className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
-                    >
-                      <option value="">Choose a slot</option>
-                      <option value="09:00 AM">09:00 AM</option>
-                      <option value="11:00 AM">11:00 AM</option>
-                      <option value="02:00 PM">02:00 PM</option>
-                      <option value="04:00 PM">04:00 PM</option>
-                    </select>
+                    <label className="block text-xs font-semibold text-foreground mb-1">Notes / Symptoms (Optional)</label>
+                    <textarea 
+                      disabled={isSubmitting}
+                      value={bookingMessage}
+                      onChange={(e) => setBookingMessage(e.target.value)}
+                      placeholder="Write any symptoms or inquiries..."
+                      rows={2}
+                      className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50 resize-none"
+                    />
                   </div>
                   
                   {selectedService.id === "nadi-parikshan" && (
@@ -256,9 +360,10 @@ export default function Booking() {
 
                   <button 
                     type="submit" 
-                    className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover mt-2 cursor-pointer"
+                    disabled={isSubmitting}
+                    className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover mt-2 cursor-pointer disabled:opacity-50"
                   >
-                    Confirm Booking
+                    {isSubmitting ? "Holding Booking Slot..." : "Confirm Booking"}
                   </button>
                 </form>
               </>

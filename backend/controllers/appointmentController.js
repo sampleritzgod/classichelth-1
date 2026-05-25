@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
 
 /**
@@ -6,12 +7,17 @@ import Appointment from "../models/Appointment.js";
  * @access  Public
  */
 export const createAppointment = async (req, res, next) => {
+  console.log("[API] Incoming booking request body:", req.body);
+  console.log(
+    "[Database] MongoDB connection state:",
+    mongoose.connection.readyState === 1 ? "Connected (OK)" : "Disconnected (Error)"
+  );
+
   try {
     const { name, email, phone, date, timeSlot, condition, message } = req.body;
 
     // Create and store the appointment in MongoDB
-    // Mongoose validates fields based on the Appointment Schema definition
-    const appointment = await Appointment.create({
+    const appointment = new Appointment({
       name,
       email,
       phone,
@@ -21,12 +27,17 @@ export const createAppointment = async (req, res, next) => {
       message,
     });
 
+    await appointment.save();
+
+    console.log("[API] Appointment saved successfully to MongoDB:", appointment._id);
+
     res.status(201).json({
       success: true,
-      message: "Appointment created successfully!",
+      message: "Appointment booked successfully",
       data: appointment,
     });
   } catch (error) {
+    console.error("[API Error] Failed to save appointment in database:", error.message);
     // If Mongoose validation fails, we set bad request status (400)
     if (error.name === "ValidationError") {
       res.status(400);
