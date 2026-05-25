@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getWhatsAppUrl, openWhatsApp } from "@/utils/whatsapp";
 
 interface CartItem {
   id: number;
@@ -79,6 +80,15 @@ export default function Navbar() {
   };
 
   const cartTotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+  const handleCheckout = () => {
+    let orderMsg = "Hello! I would like to order the following products from your website:\n\n";
+    cartItems.forEach((item) => {
+      orderMsg += `• ${item.quantity}x ${item.name} (₹${(item.price * item.quantity).toLocaleString()})\n`;
+    });
+    orderMsg += `\n*Total Amount: ₹${cartTotal.toLocaleString()}*\n\nPlease confirm my order. Thank you!`;
+    openWhatsApp(orderMsg);
+  };
 
   return (
     <>
@@ -168,7 +178,7 @@ export default function Navbar() {
 
               {/* WhatsApp Us Button */}
               <a
-                href="https://wa.me/918815010090"
+                href={getWhatsAppUrl("Hello! I would like to make an inquiry about wellness treatments and therapist availability.")}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-full border border-primary px-5 py-2 text-sm font-medium text-primary transition-all duration-300 hover:bg-primary hover:text-white"
@@ -237,7 +247,7 @@ export default function Navbar() {
                   {isLoggedIn ? "Log Out" : "Log In"}
                 </button>
                 <a
-                  href="https://wa.me/918815010090"
+                  href={getWhatsAppUrl("Hello! I would like to make an inquiry about wellness treatments and therapist availability.")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex w-full items-center justify-center rounded-full bg-primary py-2.5 text-sm font-medium text-white hover:bg-primary-hover"
@@ -396,10 +406,10 @@ export default function Navbar() {
                     </div>
                     <p className="text-xs text-foreground/50 mb-4">Shipping and taxes calculated at checkout.</p>
                     <button 
-                      onClick={() => alert("Checkout flow simulated!")}
+                      onClick={handleCheckout}
                       className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-colors"
                     >
-                      Checkout
+                      Checkout on WhatsApp
                     </button>
                   </div>
                 )}

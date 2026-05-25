@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { getWhatsAppUrl } from "@/utils/whatsapp";
 
 interface FAQItem {
   q: string;
@@ -446,6 +447,15 @@ export default function Products() {
               >
                 Add to Shopping Bag
               </button>
+
+              <a
+                href={getWhatsAppUrl(`Hello! I would like to order ${detailProduct.name} (₹${detailProduct.price.toLocaleString()}) directly. Please let me know the details.`)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full rounded-full border border-primary text-primary py-3 text-sm font-semibold hover:bg-primary/5 shadow-xs transition-all duration-300 mt-3 text-center block"
+              >
+                Order on WhatsApp
+              </a>
             </div>
 
             {/* Right Side: Informative Tabs (Ingredients, Benefits, Usage, FAQ, Testimonials) */}
@@ -511,7 +521,7 @@ export default function Products() {
                     </div>
                     <div className="flex items-start gap-x-2.5 text-xs text-foreground/50">
                       <span className="text-[#b38f4d] font-bold">ℹ</span>
-                      <span>For children or specific chronic health histories, please WhatsApp our therapists to customize your daily consumption schedule.</span>
+                      <span>For children or specific chronic health histories, please <a href={getWhatsAppUrl(`Hello! I would like to customize a daily consumption schedule for ${detailProduct.name}.`)} target="_blank" rel="noopener noreferrer" className="underline text-primary font-semibold hover:text-[#4caf50]">WhatsApp our therapists</a> to customize your daily consumption schedule.</span>
                     </div>
                   </div>
                 )}
