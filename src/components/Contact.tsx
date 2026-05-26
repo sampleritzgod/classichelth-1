@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { API_ENDPOINTS } from "@/config";
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -19,11 +20,25 @@ export default function Contact() {
     e.preventDefault();
     setStatus("submitting");
 
-    // Simulate submission
-    setTimeout(() => {
+    try {
+      const response = await fetch(API_ENDPOINTS.messages, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
       setStatus("success");
       setFormData({ name: "", email: "", message: "" });
-    }, 1200);
+    } catch (error) {
+      console.error("Error submitting contact form:", error);
+      setStatus("error");
+    }
   };
 
   return (
@@ -159,6 +174,12 @@ export default function Contact() {
                     placeholder="Tell us about the therapy you'd like to book..."
                   />
                 </div>
+
+                {status === "error" && (
+                  <p className="text-sm font-semibold text-red-600 mb-4">
+                    Failed to send message. Please try again or call us directly.
+                  </p>
+                )}
 
                 <div>
                   <button

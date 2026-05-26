@@ -6,6 +6,9 @@ import morgan from "morgan";
 import connectDB from "./config/db.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -73,6 +76,9 @@ app.get("/", (req, res) => {
 // API Routes
 app.use("/api/v1", healthRoutes);
 app.use("/api/v1", appointmentRoutes);
+app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1", productRoutes);
+app.use("/api/v1", messageRoutes);
 
 // Error Handling Middlewares
 app.use(notFound);

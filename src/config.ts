@@ -18,4 +18,10 @@ export const API_URL =
 export const API_ENDPOINTS = {
   health: `${API_URL}/api/v1/health`,
   appointments: `${API_URL}/api/v1/appointments`,
+  products: `${API_URL}/api/v1/products`,
+  messages: `${API_URL}/api/v1/messages`,
+  adminStats: `${API_URL}/api/v1/admin/dashboard/stats`,
+  adminAppointments: `${API_URL}/api/v1/admin/appointments`,
+  adminMessages: `${API_URL}/api/v1/admin/messages`,
+  adminProducts: `${API_URL}/api/v1/products`,
 };
