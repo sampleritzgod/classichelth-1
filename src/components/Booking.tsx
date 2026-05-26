@@ -91,8 +91,8 @@ export default function Booking() {
   // Prefill details when user logs in
   useEffect(() => {
     if (user) {
-      setBookingName(user.name || "");
-      setBookingEmail(user.email || "");
+      setBookingName(user?.name || "");
+      setBookingEmail(user?.email || "");
     } else {
       setBookingName("");
       setBookingEmail("");

@@ -154,12 +154,12 @@ export default function ProfilePage() {
                 <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-foreground/5">
                   {/* Minimalist Avatar */}
                   <div className="h-20 w-20 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-3xl shadow-sm border border-primary/5">
-                    {user.name.charAt(0).toUpperCase()}
+                    {(user?.name || "U").charAt(0).toUpperCase()}
                   </div>
                   <div className="text-center sm:text-left space-y-1">
-                    <h2 className="font-serif text-2xl font-semibold text-foreground">{user.name}</h2>
+                    <h2 className="font-serif text-2xl font-semibold text-foreground">{user?.name || "User"}</h2>
                     <span className="inline-block bg-[#e8f5e9] text-[#2e7d32] text-[10px] font-bold tracking-wider px-3 py-1 rounded-full uppercase">
-                      {user.role} Member
+                      {user?.role || "user"} Member
                     </span>
                   </div>
                 </div>
@@ -169,7 +169,7 @@ export default function ProfilePage() {
                     <span className="block text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">
                       Email Address
                     </span>
-                    <span className="text-sm font-medium text-foreground">{user.email}</span>
+                    <span className="text-sm font-medium text-foreground">{user?.email || ""}</span>
                   </div>
                   <div>
                     <span className="block text-[10px] font-bold text-foreground/50 uppercase tracking-wider mb-1">
@@ -182,8 +182,8 @@ export default function ProfilePage() {
                 <div className="pt-4 flex justify-center sm:justify-start">
                   <button
                     onClick={() => {
-                      setEditName(user.name);
-                      setEditEmail(user.email);
+                      setEditName(user?.name || "");
+                      setEditEmail(user?.email || "");
                       setIsEditing(true);
                       setEditError(null);
                       setEditSuccess(null);

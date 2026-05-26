@@ -44,14 +44,13 @@ export default function AdminLayout({
           credentials: "include", // Send cookie if present
         });
         const json = await response.json();
-
-        if (response.ok && json.success) {
+        if (response.ok && json.success && json?.data?.user) {
           const user = json.data.user;
           // Check role permission
-          if (user.role === "admin" || user.role === "superadmin") {
-            setAdminEmail(user.email);
-            localStorage.setItem("admin_email", user.email);
-            localStorage.setItem("admin_role", user.role);
+          if (user?.role === "admin" || user?.role === "superadmin") {
+            setAdminEmail(user?.email || "");
+            localStorage.setItem("admin_email", user?.email || "");
+            localStorage.setItem("admin_role", user?.role || "");
             if (json.token) {
               localStorage.setItem("admin_token", json.token);
             }

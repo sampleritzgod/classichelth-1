@@ -41,13 +41,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const json = await response.json();
 
-        if (response.ok && json.success) {
-          setUser(json.data.user);
+        if (response.ok && json.success && json?.data?.user) {
+          const user = json.data.user;
+          setUser(user);
           
           // For administrative route compatibility
-          if (json.data.user.role === "admin" || json.data.user.role === "superadmin") {
-            localStorage.setItem("admin_email", json.data.user.email);
-            localStorage.setItem("admin_role", json.data.user.role);
+          if (user?.role === "admin" || user?.role === "superadmin") {
+            localStorage.setItem("admin_email", user?.email || "");
+            localStorage.setItem("admin_role", user?.role || "");
             if (json.token) {
               localStorage.setItem("admin_token", json.token);
             }
@@ -73,11 +74,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Sync token to localStorage for existing admin routes when credentials are set
-  const syncAdminSession = (data: { user: User; token?: string }) => {
-    setUser(data.user);
-    if (data.user.role === "admin" || data.user.role === "superadmin") {
-      localStorage.setItem("admin_email", data.user.email);
-      localStorage.setItem("admin_role", data.user.role);
+  const syncAdminSession = (data?: { user?: User; token?: string }) => {
+    if (!data || !data.user) return;
+    const user = data.user;
+    setUser(user);
+    if (user?.role === "admin" || user?.role === "superadmin") {
+      localStorage.setItem("admin_email", user?.email || "");
+      localStorage.setItem("admin_role", user?.role || "");
       if (data.token) {
         localStorage.setItem("admin_token", data.token);
       }
@@ -159,12 +162,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error(json.message || "Failed to update profile.");
     }
 
-    const updatedUser = json.data.user;
+    const updatedUser = json?.data?.user;
     setUser(updatedUser);
     
     // Sync email to admin localStorage if role is admin
-    if (updatedUser.role === "admin" || updatedUser.role === "superadmin") {
-      localStorage.setItem("admin_email", updatedUser.email);
+    if (updatedUser && (updatedUser?.role === "admin" || updatedUser?.role === "superadmin")) {
+      localStorage.setItem("admin_email", updatedUser?.email || "");
     }
 
     return updatedUser;

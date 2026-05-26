@@ -42,10 +42,9 @@ export default function AdminLogin() {
       const json = await response.json();
 
       if (response.ok && json.success) {
-        // Save session details
-        localStorage.setItem("admin_token", json.token);
-        localStorage.setItem("admin_email", json.data.user.email);
-        localStorage.setItem("admin_role", json.data.user.role);
+        localStorage.setItem("admin_token", json?.token || "");
+        localStorage.setItem("admin_email", json?.data?.user?.email || "");
+        localStorage.setItem("admin_role", json?.data?.user?.role || "");
 
         // Redirect to dashboard board
         router.push("/admin/dashboard");

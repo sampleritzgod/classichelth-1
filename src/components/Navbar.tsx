@@ -18,7 +18,7 @@ interface CartItem {
 
 export default function Navbar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -158,8 +158,8 @@ export default function Navbar() {
         description: `Purchase of ${cartItems.length} item(s)`,
         order_id: order.id,
         prefill: {
-          name: user.name,
-          email: user.email,
+          name: user?.name || "",
+          email: user?.email || "",
         },
         theme: {
           color: "#1e3f20", // Custom dark-green minimalist theme
@@ -263,16 +263,20 @@ export default function Navbar() {
             {/* Right actions */}
             <div className="hidden md:flex md:items-center md:gap-x-4">
               {/* Profile Log In / User Dropdown */}
-              {user ? (
+              {loading ? (
+                <div className="flex items-center justify-center h-7 w-7">
+                  <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
+              ) : user ? (
                 <div className="relative">
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="flex items-center gap-x-2 text-sm font-medium text-foreground/90 hover:text-primary transition-all duration-300 cursor-pointer"
                   >
                     <span className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                      {user.name.charAt(0).toUpperCase()}
+                      {(user?.name || "U").charAt(0).toUpperCase()}
                     </span>
-                    <span className="hidden sm:inline-block max-w-[120px] truncate">{user.name.split(" ")[0]}</span>
+                    <span className="hidden sm:inline-block max-w-[120px] truncate">{user?.name ? user.name.split(" ")[0] : "User"}</span>
                     <svg className={`h-4 w-4 text-foreground/50 transition-transform duration-300 ${userDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -281,8 +285,8 @@ export default function Navbar() {
                   {userDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl bg-[#faf9f5] border border-foreground/5 shadow-2xl p-2 z-50 animate-fade-up">
                       <div className="px-4 py-2 border-b border-foreground/5 mb-1 text-left">
-                        <p className="text-xs font-bold text-foreground truncate">{user.name}</p>
-                        <p className="text-[10px] text-foreground/50 truncate font-medium">{user.email}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{user?.name || "User"}</p>
+                        <p className="text-[10px] text-foreground/50 truncate font-medium">{user?.email || ""}</p>
                       </div>
                       
                       <Link
@@ -293,7 +297,7 @@ export default function Navbar() {
                         My Profile
                       </Link>
 
-                      {(user.role === "admin" || user.role === "superadmin") && (
+                      {(user?.role === "admin" || user?.role === "superadmin") && (
                         <a
                           href="/admin/dashboard"
                           target="_blank"
@@ -406,15 +410,19 @@ export default function Navbar() {
               <Link href={getLink("#booking")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Book Online</Link>
               
               <div className="mt-6 flex flex-col gap-y-3 px-3">
-                {user ? (
+                {loading ? (
+                  <div className="flex items-center justify-center py-3 w-full">
+                    <div className="h-5 w-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                  </div>
+                ) : user ? (
                   <>
                     <div className="flex items-center gap-x-3 px-3 py-2 border-b border-foreground/5 text-left">
                       <span className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                        {user.name.charAt(0).toUpperCase()}
+                        {(user?.name || "U").charAt(0).toUpperCase()}
                       </span>
                       <div>
-                        <p className="text-xs font-bold text-foreground">{user.name}</p>
-                        <p className="text-[10px] text-foreground/50 font-medium">{user.email}</p>
+                        <p className="text-xs font-bold text-foreground">{user?.name || "User"}</p>
+                        <p className="text-[10px] text-foreground/50 font-medium">{user?.email || ""}</p>
                       </div>
                     </div>
                     
@@ -426,7 +434,7 @@ export default function Navbar() {
                       My Profile
                     </Link>
                     
-                    {(user.role === "admin" || user.role === "superadmin") && (
+                    {(user?.role === "admin" || user?.role === "superadmin") && (
                       <a
                         href="/admin/dashboard"
                         target="_blank"
