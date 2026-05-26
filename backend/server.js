@@ -41,12 +41,12 @@ app.use(
       // Allow requests with no origin (like mobile apps, postman, or curl)
       if (!origin) return callback(null, true);
       
-      // Check if the origin matches any of our allowed domains
+      // Check if the origin matches any of our allowed domains or Vercel preview subdomains
       const isAllowed = allowedOrigins.some((allowedOpt) => {
         const cleanAllowed = allowedOpt.trim().replace(/\/$/, "");
         const cleanOrigin = origin.trim().replace(/\/$/, "");
         return cleanAllowed === cleanOrigin;
-      });
+      }) || (origin.endsWith(".vercel.app") && origin.includes("your-first-creation")) || origin.includes("localhost");
 
       if (isAllowed) {
         return callback(null, true);
