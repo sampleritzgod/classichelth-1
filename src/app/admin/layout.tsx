@@ -19,66 +19,88 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { user, loading, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState("admin@example.com");
 
+  // Keep adminEmail synced with user email
   useEffect(() => {
-    if (pathname === "/admin/login") {
-      setAuthLoading(false);
-      return;
+    if (user?.email) {
+      setAdminEmail(user.email);
     }
+  }, [user]);
 
-    const verifySession = async () => {
-      const email = localStorage.getItem("admin_email");
-      if (email) setAdminEmail(email);
+  // Route protection and redirection
+  useEffect(() => {
+    if (loading) return;
 
-      try {
-        const response = await fetch(API_ENDPOINTS.authMe, {
-          credentials: "include", // Send cookie if present
-        });
-        const json = await response.json();
-        if (response.ok && json.success && json?.data?.user) {
-          const user = json.data.user;
-          // Check role permission
-          if (user?.role === "admin" || user?.role === "superadmin") {
-            setAdminEmail(user?.email || "");
-            localStorage.setItem("admin_email", user?.email || "");
-            localStorage.setItem("admin_role", user?.role || "");
-            if (json.token) {
-              localStorage.setItem("admin_token", json.token);
-            }
-            setAuthLoading(false);
-          } else {
-            // Not an admin
-            router.push("/");
-          }
-        } else {
-          // Session expired or invalid
-          localStorage.removeItem("admin_email");
-          localStorage.removeItem("admin_role");
-          router.push("/admin/login");
-        }
-      } catch (err) {
-        console.error("Auth verification failed:", err);
-        const adminRole = localStorage.getItem("admin_role");
-        if (adminRole === "admin" || adminRole === "superadmin") {
-          // Fallback for development if server is temporarily down or offline
-          setAuthLoading(false);
-        } else {
-          router.push("/admin/login");
-        }
+    if (pathname === "/admin/login") {
+      if (user && (user?.role === "admin" || user?.role === "superadmin")) {
+        router.replace("/admin/dashboard");
       }
-    };
-
-    verifySession();
-  }, [pathname, router]);
+    } else {
+      if (!user) {
+        router.replace("/admin/login");
+      }
+    }
+  }, [user, loading, pathname, router]);
 
   const handleLogout = async () => {
     await logout();
     router.push("/admin/login");
   };
+
+  // Determine if we need to show verification/redirect loader
+  const isRedirecting =
+    loading ||
+    (pathname === "/admin/login" && user && (user?.role === "admin" || user?.role === "superadmin")) ||
+    (pathname !== "/admin/login" && !user);
+
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="text-center space-y-4">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          <p className="text-xs text-foreground/50 font-serif">Verifying administrative session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
+  // Check role authorization for all other admin routes
+  if (user && user?.role !== "admin" && user?.role !== "superadmin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-foreground/5 shadow-xl text-center space-y-6">
+          <span className="text-4xl block">🚫</span>
+          <h2 className="font-serif text-2xl font-bold tracking-tight text-red-600">
+            Access Denied
+          </h2>
+          <p className="text-xs text-foreground/60 leading-relaxed">
+            You are authenticated as <span className="font-semibold">{user.email}</span>, but you do not have administrative permissions to view this portal.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <Link
+              href="/"
+              className="bg-primary hover:bg-primary-hover text-white py-2.5 px-6 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all"
+            >
+              Go to Home Page
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="border border-red-200 text-red-600 hover:bg-red-700 py-2.5 px-6 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
+            >
+              Log Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const navigation: NavItem[] = [
     {
@@ -127,22 +149,7 @@ export default function AdminLayout({
       ),
     },
   ];
-
-  if (pathname === "/admin/login") {
-    return <>{children}</>;
-  }
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <div className="text-center space-y-4">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-          <p className="text-xs text-foreground/50 font-serif">Verifying administrative session...</p>
-        </div>
-      </div>
-    );
-  }
-
+  
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       {/* Sidebar for Desktop */}

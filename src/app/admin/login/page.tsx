@@ -1,23 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { API_ENDPOINTS } from "@/config";
+import { useAuth } from "@/context/AuthContext";
 
 export default function AdminLogin() {
   const router = useRouter();
+  const { login, logout } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // If already logged in, redirect directly to dashboard
-  useEffect(() => {
-    const adminRole = localStorage.getItem("admin_role");
-    if (adminRole === "admin" || adminRole === "superadmin") {
-      router.push("/admin/dashboard");
-    }
-  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,24 +24,16 @@ export default function AdminLogin() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(API_ENDPOINTS.login, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
+      // Authenticate via global AuthContext
+      const user = await login(email.trim(), password);
 
-      const json = await response.json();
-
-      if (response.ok && json.success) {
-        localStorage.setItem("admin_email", json?.data?.user?.email || "");
-        localStorage.setItem("admin_role", json?.data?.user?.role || "");
-
-        // Redirect to dashboard board
+      // Verify that user is administrative
+      if (user?.role === "admin" || user?.role === "superadmin") {
         router.push("/admin/dashboard");
       } else {
-        throw new Error(json.message || "Invalid authentication credentials.");
+        // Log out immediately to prevent invalid admin session state
+        await logout();
+        throw new Error("Unauthorized: Access restricted to administrative accounts.");
       }
     } catch (err: any) {
       console.error(err);

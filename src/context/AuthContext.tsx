@@ -57,43 +57,63 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        console.log("[AuthContext] Session check: Started fetching /api/v1/auth/me");
         const response = await fetch(API_ENDPOINTS.authMe, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
-          // Always send cookies in fetch request
           credentials: "include",
         });
 
         const json = await response.json();
+        console.log("[AuthContext] Session check response received:", json);
 
         if (response.ok && json.success && json?.data?.user) {
-          const user = json.data.user;
-          setUser(user);
+          const fetchedUser = json.data.user;
+          console.log("[AuthContext] Active session verified. Logged in user email:", fetchedUser.email);
+          setUser(fetchedUser);
           
-          // For administrative route compatibility
-          if (user?.role === "admin" || user?.role === "superadmin") {
-            localStorage.setItem("admin_email", user?.email || "");
-            localStorage.setItem("admin_role", user?.role || "");
+          // Sync localStorage for admin route guards
+          if (fetchedUser?.role === "admin" || fetchedUser?.role === "superadmin") {
+            localStorage.setItem("admin_email", fetchedUser?.email || "");
+            localStorage.setItem("admin_role", fetchedUser?.role || "");
+          } else {
+            localStorage.removeItem("admin_email");
+            localStorage.removeItem("admin_role");
           }
         } else {
+          console.log("[AuthContext] Session invalid or unauthenticated.");
           setUser(null);
+          localStorage.removeItem("admin_email");
+          localStorage.removeItem("admin_role");
         }
-      } catch (error) {
-        console.error("Session restoration failed:", error);
-        setUser(null);
+      } catch (error: any) {
+        console.error("[AuthContext] Session restoration threw exception:", error);
+        
+        // Developer fallback in case server is offline
+        const adminRole = localStorage.getItem("admin_role");
+        const adminEmail = localStorage.getItem("admin_email");
+        if (adminRole === "admin" || adminRole === "superadmin") {
+          console.log("[AuthContext] Server offline. Using offline developer administrative session fallback.");
+          setUser({
+            _id: "000000000000000000000123",
+            name: "Admin Tester (Offline)",
+            email: adminEmail || "admin@example.com",
+            role: adminRole as "admin" | "superadmin",
+            createdAt: new Date().toISOString(),
+          });
+        } else {
+          setUser(null);
+          localStorage.removeItem("admin_email");
+          localStorage.removeItem("admin_role");
+        }
       } finally {
+        console.log("[AuthContext] Session check complete. Setting loading to false.");
         setLoading(false);
       }
     };
 
-    const isLocalhost =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1");
-
-    // Only restore session if not in an environment where we mock local storage logins
     fetchUser();
   }, []);
 
