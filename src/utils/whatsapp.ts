@@ -27,6 +27,7 @@ export const getPrimaryWhatsAppNumber = (): string => {
 /**
  * Generates a properly encoded WhatsApp Click-to-Chat URL.
  * If phone is not provided, it dynamically routes to one of the clinic support lines.
+ * If phone is provided, it targets that phone number (e.g. the customer's phone).
  */
 export const getWhatsAppUrl = (message: string, phone?: string): string => {
   const targetPhone = phone || getPrimaryWhatsAppNumber();
@@ -63,6 +64,12 @@ export const WHATSAPP_TEMPLATES = {
     return `Hello ${name}, thank you for choosing U 1st Creation for your "${service}" therapy today. We hope you feel relaxed and rejuvenated. We would love to hear your feedback!`;
   },
   followUpReminder: (name: string) => {
-    return `Hello ${name}, this is a gentle follow-up from the therapist team at U 1st Creation Wellness Clinic. We wanted to check on your wellness progress and how you are feeling after your treatment. Please let us know if you need to schedule your next check-up!`;
+    return `Hello ${name}, this is a gentle follow-up from the therapist team at U 1st Creation Wellness Clinic. We wanted to check on your wellness progress and how you are feeling after your treatment. Let us know if you need to schedule your next check-up!`;
+  },
+  consultationReminder: (name: string, date: string, time: string, service: string) => {
+    return `Hello ${name}, this is a friendly reminder that you have an upcoming consultation for "${service}" at U 1st Creation on ${date} at ${time}. We look forward to seeing you.`;
+  },
+  productInquiryResponse: (name: string, productName: string = "Ayurvedic wellness formula") => {
+    return `Hello ${name}, thank you for reaching out to U 1st Creation. Regarding your inquiry about our product "${productName}", it is formulated with pure Ayurvedic ingredients and is currently in stock. Please let us know if you'd like us to arrange a delivery!`;
   },
 };
