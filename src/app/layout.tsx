@@ -19,6 +19,8 @@ export const metadata: Metadata = {
   description: "Experience holistic healing, massage therapy, organic remedies, and lifestyle consultation at Classic Health, your modern minimalist wellness sanctuary.",
 };
 
+import { AuthProvider } from "@/context/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,7 +31,9 @@ export default function RootLayout({
       lang="en"
       className={`${playfair.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-background text-foreground">{children}</body>
+      <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

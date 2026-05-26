@@ -26,6 +26,13 @@ export const API_ENDPOINTS = {
   adminAppointments: `${API_URL}/api/v1/admin/appointments`,
   adminMessages: `${API_URL}/api/v1/admin/messages`,
   adminProducts: `${API_URL}/api/v1/products`,
+  signup: `${API_URL}/api/v1/auth/signup`,
   login: `${API_URL}/api/v1/auth/login`,
+  logout: `${API_URL}/api/v1/auth/logout`,
   authMe: `${API_URL}/api/v1/auth/me`,
+  forgotPassword: `${API_URL}/api/v1/auth/forgot-password`,
+  resetPassword: `${API_URL}/api/v1/auth/reset-password`,
+  googleLogin: `${API_URL}/api/v1/auth/google`,
+  facebookLogin: `${API_URL}/api/v1/auth/facebook`,
 };
+

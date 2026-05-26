@@ -443,3 +443,34 @@ export const sendAdminMessageNotification = async (message) => {
 
   return sendMail({ to: adminEmail, subject, html, text });
 };
+
+/**
+ * Send Password Reset Email
+ */
+export const sendPasswordResetEmail = async (email, name, resetUrl) => {
+  const subject = `Reset Your Password - U 1st Creation`;
+  const text = `Hello ${name},\n\nYou requested a password reset. Please use the following link to reset your password:\n\n${resetUrl}\n\nThis link will expire in 10 minutes.\n\nIf you did not request this, please ignore this email.`;
+
+  const html = getHtmlTemplate(
+    "Reset Your Password",
+    `
+    <p>Dear ${name},</p>
+    <p>We received a request to reset the password associated with your account at U 1st Creation.</p>
+    <p>Please click the button below to choose a new password. This link is valid for the next 10 minutes:</p>
+    
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="${resetUrl}" class="btn" style="background-color: #1c3325; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 50px; font-weight: 600;">Reset Password</a>
+    </div>
+    
+    <p style="font-size: 13px; color: #6e7a70;">If the button above does not work, copy and paste the following URL into your web browser:</p>
+    <p style="font-size: 12px; word-break: break-all; color: #8fad88;">${resetUrl}</p>
+    
+    <div class="divider"></div>
+    
+    <p>If you did not request a password reset, please ignore this email or contact support if you have security concerns.</p>
+    `
+  );
+
+  return sendMail({ to: email, subject, html, text });
+};
+

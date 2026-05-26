@@ -29,24 +29,37 @@ export default function AdminLayout({
     }
 
     const verifySession = async () => {
-      const token = localStorage.getItem("admin_token");
+      let token = localStorage.getItem("admin_token");
       const email = localStorage.getItem("admin_email");
       if (email) setAdminEmail(email);
 
-      if (!token) {
-        router.push("/admin/login");
-        return;
-      }
-
       try {
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
         const response = await fetch(API_ENDPOINTS.authMe, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
+          credentials: "include", // Send cookie if present
         });
         const json = await response.json();
+
         if (response.ok && json.success) {
-          setAuthLoading(false);
+          const user = json.data.user;
+          // Check role permission
+          if (user.role === "admin" || user.role === "superadmin") {
+            setAdminEmail(user.email);
+            localStorage.setItem("admin_email", user.email);
+            localStorage.setItem("admin_role", user.role);
+            if (json.token) {
+              localStorage.setItem("admin_token", json.token);
+            }
+            setAuthLoading(false);
+          } else {
+            // Not an admin
+            router.push("/");
+          }
         } else {
           // Token expired or invalid
           localStorage.removeItem("admin_token");
@@ -54,8 +67,12 @@ export default function AdminLayout({
         }
       } catch (err) {
         console.error("Auth verification failed:", err);
-        // Fallback for development if server is temporarily down or offline
-        setAuthLoading(false);
+        if (token) {
+          // Fallback for development if server is temporarily down or offline
+          setAuthLoading(false);
+        } else {
+          router.push("/admin/login");
+        }
       }
     };
 

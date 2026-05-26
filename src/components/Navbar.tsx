@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { getWhatsAppUrl, openWhatsApp } from "@/utils/whatsapp";
+import { useAuth } from "@/context/AuthContext";
+import AuthModals from "@/components/AuthModals";
 
 interface CartItem {
   id: number;
@@ -13,15 +15,16 @@ interface CartItem {
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-
   
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Authentication states from Context
+  const { user, logout } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "signup" | "forgot">("login");
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
 
 
@@ -49,6 +52,22 @@ export default function Navbar() {
     return () => window.removeEventListener("u1st_cart_change", updateCartState);
   }, []);
 
+  // Event listener to open authentication modals from anywhere in the app
+  useEffect(() => {
+    const handleOpenAuth = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.mode) {
+        setAuthModalMode(customEvent.detail.mode);
+      } else {
+        setAuthModalMode("login");
+      }
+      setAuthModalOpen(true);
+    };
+
+    window.addEventListener("open_auth_modal", handleOpenAuth);
+    return () => window.removeEventListener("open_auth_modal", handleOpenAuth);
+  }, []);
+
   const handleRemoveFromCart = (id: number) => {
     const updated = cartItems.filter(item => item.id !== id);
     localStorage.setItem("u1st_cart", JSON.stringify(updated));
@@ -67,17 +86,16 @@ export default function Navbar() {
     window.dispatchEvent(new Event("u1st_cart_change"));
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loginEmail && loginPassword) {
-      setIsLoggedIn(true);
-      setIsLoginOpen(false);
-    }
-  };
+  // handleLoginSubmit replaced with Context auth
 
   const cartTotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
   const handleCheckout = () => {
+    if (!user) {
+      setIsCartOpen(false);
+      window.dispatchEvent(new CustomEvent("open_auth_modal", { detail: { mode: "login" } }));
+      return;
+    }
     let orderMsg = "Hello! I would like to order the following products from your website:\n\n";
     cartItems.forEach((item) => {
       orderMsg += `• ${item.quantity}x ${item.name} (₹${(item.price * item.quantity).toLocaleString()})\n`;
@@ -123,16 +141,80 @@ export default function Navbar() {
 
             {/* Right actions */}
             <div className="hidden md:flex md:items-center md:gap-x-4">
-              {/* Profile Log In */}
-              <button 
-                onClick={() => isLoggedIn ? setIsLoggedIn(false) : setIsLoginOpen(true)}
-                className="flex items-center gap-x-1.5 text-sm font-medium text-foreground/90 hover:text-primary transition-colors cursor-pointer"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span>{isLoggedIn ? "Log Out" : "Log In"}</span>
-              </button>
+              {/* Profile Log In / User Dropdown */}
+              {user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center gap-x-2 text-sm font-medium text-foreground/90 hover:text-primary transition-all duration-300 cursor-pointer"
+                  >
+                    {user.profileImage ? (
+                      <img
+                        src={user.profileImage}
+                        alt={user.fullName}
+                        className="h-7 w-7 rounded-full object-cover border border-[#1e3f20]/10"
+                      />
+                    ) : (
+                      <span className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                        {user.fullName.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="hidden sm:inline-block max-w-[120px] truncate">{user.fullName.split(" ")[0]}</span>
+                    <svg className={`h-4 w-4 text-foreground/50 transition-transform duration-300 ${userDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl bg-[#faf9f5] border border-foreground/5 shadow-2xl p-2 z-50 animate-fade-up">
+                      <div className="px-4 py-2 border-b border-foreground/5 mb-1 text-left">
+                        <p className="text-xs font-bold text-foreground truncate">{user.fullName}</p>
+                        <p className="text-[10px] text-foreground/50 truncate font-medium">{user.email}</p>
+                      </div>
+                      
+                      <a
+                        href="#booking"
+                        onClick={() => setUserDropdownOpen(false)}
+                        className="block text-left px-4 py-2 rounded-xl text-xs font-semibold text-foreground/80 hover:bg-foreground/5 hover:text-primary transition-all"
+                      >
+                        My Appointments
+                      </a>
+
+                      {(user.role === "admin" || user.role === "superadmin") && (
+                        <a
+                          href="/admin/dashboard"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setUserDropdownOpen(false)}
+                          className="block text-left px-4 py-2 rounded-xl text-xs font-semibold text-[#b38f4d] hover:bg-foreground/5 transition-all"
+                        >
+                          Admin Dashboard
+                        </a>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          logout();
+                        }}
+                        className="w-full text-left block px-4 py-2 rounded-xl text-xs font-semibold text-red-600 hover:bg-red-50 transition-all cursor-pointer"
+                      >
+                        Log Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button 
+                  onClick={() => { setAuthModalMode("login"); setAuthModalOpen(true); }}
+                  className="flex items-center gap-x-1.5 text-sm font-medium text-foreground/90 hover:text-primary transition-colors cursor-pointer"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Log In</span>
+                </button>
+              )}
 
               {/* Shopping Cart Icon */}
               <button 
@@ -211,15 +293,63 @@ export default function Navbar() {
               <a href="#booking" onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Book Online</a>
               
               <div className="mt-6 flex flex-col gap-y-3 px-3">
-                <button
-                  onClick={() => { setIsOpen(false); isLoggedIn ? setIsLoggedIn(false) : setIsLoginOpen(true); }}
-                  className="flex w-full items-center justify-center gap-2 rounded-full border border-foreground/20 py-2.5 text-sm font-medium text-foreground"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {isLoggedIn ? "Log Out" : "Log In"}
-                </button>
+                {user ? (
+                  <>
+                    <div className="flex items-center gap-x-3 px-3 py-2 border-b border-foreground/5 text-left">
+                      {user.profileImage ? (
+                        <img
+                          src={user.profileImage}
+                          alt={user.fullName}
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                          {user.fullName.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{user.fullName}</p>
+                        <p className="text-[10px] text-foreground/50 font-medium">{user.email}</p>
+                      </div>
+                    </div>
+                    
+                    {(user.role === "admin" || user.role === "superadmin") && (
+                      <a
+                        href="/admin/dashboard"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setIsOpen(false)}
+                        className="flex w-full items-center justify-center rounded-full border border-accent-gold/40 py-2.5 text-sm font-semibold text-[#b38f4d]"
+                      >
+                        Admin Dashboard
+                      </a>
+                    )}
+                    
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        logout();
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-full border border-red-200 py-2.5 text-sm font-semibold text-red-600 cursor-pointer"
+                    >
+                      Log Out
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      setAuthModalMode("login");
+                      setAuthModalOpen(true);
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-full border border-foreground/20 py-2.5 text-sm font-medium text-foreground cursor-pointer"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Log In
+                  </button>
+                )}
                 <a
                   href={getWhatsAppUrl("Hello! I would like to make an inquiry about wellness treatments and therapist availability.")}
                   target="_blank"
@@ -234,59 +364,12 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* Interactive Login Modal */}
-      {isLoginOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div onClick={() => setIsLoginOpen(false)} className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
-          
-          {/* Modal Content */}
-          <div className="relative w-full max-w-md rounded-2xl bg-background p-8 shadow-2xl border border-foreground/5 animate-fade-up">
-            <button 
-              onClick={() => setIsLoginOpen(false)}
-              className="absolute top-4 right-4 p-1.5 text-foreground/60 hover:text-foreground hover:bg-foreground/5 rounded-full"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            <h3 className="font-serif text-2xl text-primary font-semibold mb-2">Welcome Back</h3>
-            <p className="text-xs text-foreground/60 mb-6">Enter your details to access your health profile and consultations.</p>
-
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Email Address</label>
-                <input 
-                  type="email" 
-                  required 
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  className="w-full rounded-lg border border-foreground/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="name@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Password</label>
-                <input 
-                  type="password" 
-                  required 
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full rounded-lg border border-foreground/20 px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="••••••••"
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover mt-2"
-              >
-                Sign In
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Real Auth Modals */}
+      <AuthModals
+        isOpen={authModalOpen}
+        initialMode={authModalMode}
+        onClose={() => setAuthModalOpen(false)}
+      />
 
       {/* Interactive Cart Drawer */}
       {isCartOpen && (

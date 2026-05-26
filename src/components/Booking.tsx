@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { API_ENDPOINTS } from "@/config";
+import { useAuth } from "@/context/AuthContext";
 
 interface Service {
   id: string;
@@ -78,12 +79,31 @@ export default function Booking() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
+  const { user } = useAuth();
+
+  // Prefill details when user logs in
+  useEffect(() => {
+    if (user) {
+      setBookingName(user.fullName || "");
+      setBookingEmail(user.email || "");
+      setBookingPhone(user.phone || "");
+    } else {
+      setBookingName("");
+      setBookingEmail("");
+      setBookingPhone("");
+    }
+  }, [user]);
+
   const filteredServices = services.filter((srv) => {
     if (activeTab === "All Services") return true;
     return srv.category === activeTab;
   });
 
   const handleBookClick = (srv: Service) => {
+    if (!user) {
+      window.dispatchEvent(new CustomEvent("open_auth_modal", { detail: { mode: "login" } }));
+      return;
+    }
     setSelectedService(srv);
     setBookingSuccess(false);
     setBookingError(null);

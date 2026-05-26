@@ -13,6 +13,8 @@ import blogRoutes from "./routes/blogRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
+import cookieParser from "cookie-parser";
+import rateLimit from "express-rate-limit";
 
 // Load environment variables
 dotenv.config();
@@ -62,9 +64,27 @@ app.use(
   })
 );
 
+// Cookie parser middleware
+app.use(cookieParser());
+
 // Body parsing middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Rate limiting for auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    message: "Too many requests from this IP, please try again after 15 minutes",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/v1/auth/login", authLimiter);
+app.use("/api/v1/auth/signup", authLimiter);
 
 // Welcome page / Root Endpoint
 app.get("/", (req, res) => {

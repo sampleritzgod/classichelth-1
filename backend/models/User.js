@@ -3,6 +3,11 @@ import bcrypt from "bcryptjs";
 
 const userSchema = new mongoose.Schema(
   {
+    fullName: {
+      type: String,
+      required: [true, "Please provide your full name"],
+      trim: true,
+    },
     email: {
       type: String,
       required: [true, "Please provide an email address"],
@@ -16,15 +21,40 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
+      required: [
+        function () {
+          return this.provider === "local";
+        },
+        "Please provide a password",
+      ],
       minlength: [6, "Password must be at least 6 characters long"],
       select: false, // Don't return password by default in queries
     },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    provider: {
+      type: String,
+      enum: ["local", "google", "facebook"],
+      default: "local",
+    },
+    profileImage: {
+      type: String,
+      default: "",
+    },
     role: {
       type: String,
-      enum: ["admin", "practitioner"],
-      default: "admin",
+      enum: ["user", "admin", "superadmin"],
+      default: "user",
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: String,
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   {
     timestamps: true,
