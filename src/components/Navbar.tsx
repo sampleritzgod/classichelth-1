@@ -28,6 +28,13 @@ export default function Navbar() {
   
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  const handleCloseCart = () => {
+    console.log("[Cart] Closing cart, resetting checking out states");
+    setIsCartOpen(false);
+    setIsCheckingOut(false);
+  };
 
   const getLink = (hash: string) => {
     return pathname === "/" ? hash : `/${hash}`;
@@ -111,7 +118,7 @@ export default function Navbar() {
 
   const handleCheckout = async () => {
     if (!user) {
-      setIsCartOpen(false);
+      handleCloseCart();
       window.dispatchEvent(new CustomEvent("open_auth_modal", { detail: { mode: "login" } }));
       return;
     }
@@ -121,7 +128,11 @@ export default function Navbar() {
       return;
     }
 
+    let shouldResetLoading = true;
     try {
+      console.log("[Product Checkout] Checkout flow started. Payment request initiated.");
+      setIsCheckingOut(true);
+
       // 1. Create order on the backend
       const orderResponse = await fetch(API_ENDPOINTS.createOrder, {
         method: "POST",
@@ -136,6 +147,7 @@ export default function Navbar() {
       });
 
       const orderJson = await orderResponse.json();
+      console.log("[Product Checkout] Create order response received:", orderJson);
 
       if (!orderResponse.ok || !orderJson.success) {
         throw new Error(orderJson.message || "Failed to initiate payment. Please try again.");
@@ -162,10 +174,13 @@ export default function Navbar() {
           email: user?.email || "",
         },
         theme: {
-          color: "#1e3f20", // Custom dark-green minimalist theme
+          color: "#1e3f20",
         },
         handler: async (response: any) => {
           try {
+            console.log("[Product Checkout] Razorpay payment completed. Verifying payment.");
+            setIsCheckingOut(true);
+            
             // Send signature verification to backend
             const verifyResponse = await fetch(API_ENDPOINTS.verifyPayment, {
               method: "POST",
@@ -184,22 +199,30 @@ export default function Navbar() {
             });
 
             const verifyJson = await verifyResponse.json();
+            console.log("[Product Checkout] Verification response received:", verifyJson);
 
             if (verifyResponse.ok && verifyJson.success) {
+              console.log("[Product Checkout] Product order booked and verified successfully!");
               // Clear cart
               localStorage.removeItem("u1st_cart");
               window.dispatchEvent(new Event("u1st_cart_change"));
-              setIsCartOpen(false);
+              handleCloseCart();
               alert("Payment successful! Your order has been placed successfully.");
             } else {
+              console.error("[Product Checkout] Verification failed backend rejection.");
               throw new Error(verifyJson.message || "Payment verification failed.");
             }
           } catch (err: any) {
+            console.error("[Product Checkout] Verification Exception:", err);
             alert(err.message || "Failed to verify transaction. Please contact support.");
+          } finally {
+            setIsCheckingOut(false);
           }
         },
         modal: {
           ondismiss: () => {
+            console.log("[Product Checkout] Razorpay modal dismissed/cancelled by user.");
+            setIsCheckingOut(false);
             alert("Payment checkout cancelled by user.");
           },
         },
@@ -208,6 +231,7 @@ export default function Navbar() {
       // Mock Mode Fallback Simulation
       if (mock) {
         console.log("[MOCK] Simulating Razorpay checkout flow...");
+        shouldResetLoading = false;
         setTimeout(() => {
           options.handler({
             razorpay_order_id: order.id,
@@ -218,10 +242,15 @@ export default function Navbar() {
       } else {
         const rzp = new (window as any).Razorpay(options);
         rzp.open();
+        shouldResetLoading = false;
       }
     } catch (err: any) {
-      console.error("Checkout Error:", err);
+      console.error("[Product Checkout] Order Creation/SDK Load Exception:", err);
       alert(err.message || "Something went wrong during checkout. Please try again.");
+    } finally {
+      if (shouldResetLoading) {
+        setIsCheckingOut(false);
+      }
     }
   };
 
@@ -496,7 +525,7 @@ export default function Navbar() {
       {isCartOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           {/* Backdrop */}
-          <div onClick={() => setIsCartOpen(false)} className="absolute inset-0 bg-foreground/20 backdrop-blur-xs transition-opacity" />
+          <div onClick={handleCloseCart} className="absolute inset-0 bg-foreground/20 backdrop-blur-xs transition-opacity" />
           
           <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
             {/* Slide over content */}
@@ -506,7 +535,7 @@ export default function Navbar() {
                   <div className="flex items-center justify-between border-b border-foreground/5 pb-5">
                     <h3 className="font-serif text-lg font-semibold text-primary">Shopping Cart</h3>
                     <button 
-                      onClick={() => setIsCartOpen(false)}
+                      onClick={handleCloseCart}
                       className="p-1.5 text-foreground/60 hover:text-foreground hover:bg-foreground/5 rounded-full cursor-pointer"
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -514,7 +543,7 @@ export default function Navbar() {
                       </svg>
                     </button>
                   </div>
-
+ 
                   {/* Cart Items List */}
                   <div className="mt-6 divide-y divide-foreground/5 overflow-y-auto max-h-[60vh] pr-2">
                     {cartItems.length === 0 ? (
@@ -525,7 +554,7 @@ export default function Navbar() {
                         <p className="mt-4 text-sm text-foreground/60 font-medium">Your cart is empty.</p>
                         <a 
                           href="#shop" 
-                          onClick={() => setIsCartOpen(false)}
+                          onClick={handleCloseCart}
                           className="mt-2 text-xs font-semibold text-primary hover:underline inline-block"
                         >
                           Shop Wellness Essentials
@@ -585,9 +614,10 @@ export default function Navbar() {
                     <p className="text-xs text-foreground/50 mb-4">Shipping and taxes calculated at checkout.</p>
                     <button 
                       onClick={handleCheckout}
-                      className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-colors"
+                      disabled={isCheckingOut}
+                      className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
                     >
-                      Checkout & Pay Now
+                      {isCheckingOut ? "Processing..." : "Checkout & Pay Now"}
                     </button>
                   </div>
                 )}

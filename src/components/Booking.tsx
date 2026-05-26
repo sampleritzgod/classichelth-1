@@ -85,8 +85,21 @@ export default function Booking() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const { user } = useAuth();
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const handleCloseModal = () => {
+    console.log("[Booking Modal] Closing modal, resetting submitting states");
+    setSelectedService(null);
+    setIsSubmitting(false);
+    setBookingError(null);
+  };
 
   // Prefill details when user logs in
   useEffect(() => {
@@ -132,13 +145,14 @@ export default function Booking() {
     e.preventDefault();
 
     if (!user) {
-      // Force user to log in before booking
       window.dispatchEvent(new CustomEvent("open_auth_modal", { detail: { mode: "login" } }));
       return;
     }
 
     if (bookingDate && bookingTime && selectedService && bookingName && bookingEmail && bookingPhone) {
+      let shouldResetLoading = true;
       try {
+        console.log("[Payment Flow] Booking submit triggered. Payment request started.");
         setIsSubmitting(true);
         setBookingError(null);
 
@@ -156,6 +170,7 @@ export default function Booking() {
         });
 
         const orderJson = await orderResponse.json();
+        console.log("[Payment Flow] Create order response received:", orderJson);
 
         if (!orderResponse.ok || !orderJson.success) {
           throw new Error(orderJson.message || "Failed to initiate payment order.");
@@ -183,12 +198,13 @@ export default function Booking() {
             contact: bookingPhone,
           },
           theme: {
-            color: "#1e3f20", // Custom dark-green minimalist theme
+            color: "#1e3f20",
           },
           handler: async (response: any) => {
             try {
+              console.log("[Payment Flow] Razorpay payment completed. Initiating verification.");
               setIsSubmitting(true);
-              // Send signature verification to backend
+              
               const verifyResponse = await fetch(API_ENDPOINTS.verifyPayment, {
                 method: "POST",
                 headers: {
@@ -215,9 +231,13 @@ export default function Booking() {
               });
 
               const verifyJson = await verifyResponse.json();
+              console.log("[Payment Flow] Verification response received:", verifyJson);
 
               if (verifyResponse.ok && verifyJson.success) {
+                console.log("[Payment Flow] Appointment booked and verified successfully!");
                 setBookingSuccess(true);
+                showToast("Appointment booked successfully!", "success");
+                
                 // Clear fields
                 setBookingName("");
                 setBookingEmail("");
@@ -227,29 +247,34 @@ export default function Booking() {
                 setBookingMessage("");
 
                 setTimeout(() => {
-                  setSelectedService(null);
+                  handleCloseModal();
                   setBookingSuccess(false);
                 }, 4000);
               } else {
+                console.error("[Payment Flow] Verification failed backend rejection.");
                 throw new Error(verifyJson.message || "Payment verification failed.");
               }
             } catch (err: any) {
+              console.error("[Payment Flow] Verification Exception:", err);
               setBookingError(err.message || "Failed to verify transaction. Please contact support.");
+              showToast(err.message || "Failed to verify transaction.", "error");
             } finally {
               setIsSubmitting(false);
             }
           },
           modal: {
             ondismiss: () => {
+              console.log("[Payment Flow] Razorpay modal dismissed/cancelled by user.");
               setIsSubmitting(false);
               setBookingError("Payment checkout cancelled by user.");
+              showToast("Payment cancelled by user.", "error");
             },
           },
         };
 
-        // If mock checkout is active, simulate client handler automatically
         if (mock) {
           console.log("[MOCK] Simulating Razorpay checkout flow...");
+          shouldResetLoading = false;
           setTimeout(() => {
             options.handler({
               razorpay_order_id: order.id,
@@ -260,11 +285,16 @@ export default function Booking() {
         } else {
           const rzp = new (window as any).Razorpay(options);
           rzp.open();
+          shouldResetLoading = false;
         }
       } catch (err: any) {
-        console.error("Booking Error:", err);
+        console.error("[Payment Flow] Order Creation/SDK Load Exception:", err);
         setBookingError(err.message || "Something went wrong. Please try again.");
-        setIsSubmitting(false);
+        showToast(err.message || "Something went wrong. Please try again.", "error");
+      } finally {
+        if (shouldResetLoading) {
+          setIsSubmitting(false);
+        }
       }
     }
   };
@@ -358,11 +388,11 @@ export default function Booking() {
       {/* Appointment Scheduler Modal */}
       {selectedService && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div onClick={() => setSelectedService(null)} className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
+          <div onClick={handleCloseModal} className="absolute inset-0 bg-foreground/30 backdrop-blur-sm" />
           
           <div className="relative w-full max-w-md rounded-3xl bg-background p-8 shadow-2xl border border-foreground/5 animate-fade-up z-10">
             <button 
-              onClick={() => setSelectedService(null)}
+              onClick={handleCloseModal}
               className="absolute top-4 right-4 p-1.5 text-foreground/60 hover:text-foreground hover:bg-foreground/5 rounded-full cursor-pointer"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -494,6 +524,16 @@ export default function Booking() {
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-5 right-5 z-50 flex items-center p-4 rounded-xl shadow-lg border transition-all duration-300 ${
+          toast.type === "success" 
+            ? "bg-green-50 border-green-200 text-green-800" 
+            : "bg-red-50 border-red-200 text-red-800"
+        }`}>
+          <span className="text-sm font-semibold">{toast.message}</span>
         </div>
       )}
     </section>

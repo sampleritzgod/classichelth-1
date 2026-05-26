@@ -41,7 +41,7 @@ export const protect = async (req, res, next) => {
     if (token === "mock_token" && process.env.NODE_ENV === "development") {
       console.log("[Auth Middleware] Development mock token detected");
       req.user = {
-        _id: "mock_user_id_123",
+        _id: "000000000000000000000123",
         name: "Admin Tester",
         email: "admin@example.com",
         role: "admin",
