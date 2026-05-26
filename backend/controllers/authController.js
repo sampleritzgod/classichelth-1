@@ -21,7 +21,7 @@ const sendTokenResponse = (user, statusCode, req, res) => {
     expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     httpOnly: true,
     secure: isProd,
-    sameSite: "lax",
+    sameSite: isProd ? "none" : "lax",
   };
 
   // Remove password from output
@@ -106,7 +106,7 @@ export const logout = async (req, res, next) => {
       expires: new Date(0),
       httpOnly: true,
       secure: isProd,
-      sameSite: "lax",
+      sameSite: isProd ? "none" : "lax",
     });
 
     res.status(200).json({
