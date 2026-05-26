@@ -17,20 +17,32 @@ const sendTokenResponse = (user, statusCode, req, res) => {
   const token = signToken(user._id);
 
   const isProd = process.env.NODE_ENV === "production";
-  const cookieOptions = {
-    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
-  };
+  const cookieOptions = isProd
+    ? {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+        credentials: true,
+      }
+    : {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+      };
 
   // Remove password from output
   user.password = undefined;
+
+  console.log(`[sendTokenResponse] JWT generated successfully for user: ${user.email}`);
+  console.log(`[sendTokenResponse] Setting token cookie with options:`, cookieOptions);
 
   res.status(statusCode).cookie("token", token, cookieOptions).json({
     success: true,
     message: statusCode === 201 ? "User registered successfully" : "Successfully authenticated",
     token,
+    user,
     data: {
       user,
     },
@@ -102,12 +114,21 @@ export const login = async (req, res, next) => {
 export const logout = async (req, res, next) => {
   try {
     const isProd = process.env.NODE_ENV === "production";
-    res.cookie("token", "", {
-      expires: new Date(0),
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
-    });
+    const cookieOptions = isProd
+      ? {
+          expires: new Date(0),
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          credentials: true,
+        }
+      : {
+          expires: new Date(0),
+          httpOnly: true,
+          secure: false,
+          sameSite: "lax",
+        };
+    res.cookie("token", "", cookieOptions);
 
     res.status(200).json({
       success: true,
@@ -125,14 +146,19 @@ export const logout = async (req, res, next) => {
  */
 export const getMe = async (req, res, next) => {
   try {
+    console.log("[GetMe Controller] Retrieving active user session details");
+    console.log("[GetMe Controller] User payload resolved from middleware:", req.user ? req.user.email : "None");
+    
     // req.user is loaded in the protect middleware
     res.status(200).json({
       success: true,
+      user: req.user,
       data: {
         user: req.user,
       },
     });
   } catch (error) {
+    console.error("[GetMe Controller] Failed to return user:", error.message);
     next(error);
   }
 };
