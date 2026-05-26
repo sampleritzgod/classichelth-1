@@ -1,7 +1,5 @@
-/**
- * Scalable Authentication and Authorization Middleware Preparation.
- * Note: Full JWT validation check is currently bypassed for dev testing.
- */
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
 /**
  * Protect routes by checking for JWT authorization header
@@ -9,7 +7,7 @@
 export const protect = async (req, res, next) => {
   let token;
 
-  // Check if token exists in headers
+  // 1. Obtain token from headers
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
@@ -17,32 +15,61 @@ export const protect = async (req, res, next) => {
     token = req.headers.authorization.split(" ")[1];
   }
 
-  // Mock authentication session for development
-  // In production, you will decode the JWT token and load the User from database:
-  // const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  // req.user = await User.findById(decoded.id);
-  
-  req.user = {
-    _id: "mock_user_id_123",
-    name: "Admin Tester",
-    email: "admin@example.com",
-    role: "admin", // Default mock role
-  };
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: "Access denied. Please log in to proceed.",
+    });
+  }
 
-  console.log(`[Auth Middleware] Route protected by auth checked. Current user: ${req.user.email} (${req.user.role})`);
-  
-  next();
+  try {
+    // Development fallback mock token (if specified in env or if it's explicitly 'mock_token' in dev node env)
+    if (token === "mock_token" && process.env.NODE_ENV === "development") {
+      req.user = {
+        _id: "mock_user_id_123",
+        name: "Admin Tester",
+        email: "admin@example.com",
+        role: "admin",
+      };
+      return next();
+    }
+
+    // 2. Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your_jwt_secret_key_here_change_in_production");
+
+    // 3. Find user in database
+    const currentUser = await User.findById(decoded.id);
+
+    if (!currentUser) {
+      return res.status(401).json({
+        success: false,
+        message: "The user belonging to this session token no longer exists.",
+      });
+    }
+
+    // 4. Grant access and store user info in request object
+    req.user = currentUser;
+    next();
+  } catch (error) {
+    console.error("JWT Verification Error:", error.message);
+    return res.status(401).json({
+      success: false,
+      message: "Invalid session token. Please log in again.",
+    });
+  }
 };
 
 /**
  * Restrict access to specific user roles
- * @param {...string} roles - Permitted roles (e.g. 'admin', 'therapist')
+ * @param {...string} roles - Permitted roles (e.g. 'admin', 'practitioner')
  */
 export const restrictTo = (...roles) => {
   return (req, res, next) => {
-    // Fallback if protect middleware was not run
     if (!req.user) {
-      req.user = { role: "admin" };
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: Missing user authentication session.",
+      });
     }
 
     if (!roles.includes(req.user.role)) {

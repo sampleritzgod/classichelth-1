@@ -42,6 +42,14 @@ const appointmentSchema = new mongoose.Schema(
       enum: ["pending", "confirmed", "completed", "cancelled"],
       default: "pending",
     },
+    notes: {
+      type: String,
+      default: "",
+    },
+    service: {
+      type: String,
+      default: "General Wellness Consultation",
+    },
   },
   {
     timestamps: true, // Automatically creates createdAt and updatedAt fields

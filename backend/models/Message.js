@@ -25,6 +25,23 @@ const messageSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isStarred: {
+      type: Boolean,
+      default: false,
+    },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+    replies: [
+      {
+        message: String,
+        sentAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

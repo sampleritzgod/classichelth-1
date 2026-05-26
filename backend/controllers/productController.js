@@ -7,11 +7,17 @@ import Product from "../models/Product.js";
  */
 export const getProducts = async (req, res, next) => {
   try {
-    const { category } = req.query;
+    const { category, admin } = req.query;
     const query = {};
 
     if (category) {
       query.category = category;
+    }
+
+    // Return only available products for public requests (those without authentication)
+    const hasAuth = req.headers.authorization && req.headers.authorization.startsWith("Bearer");
+    if (!hasAuth && admin !== "true") {
+      query.isAvailable = { $ne: false };
     }
 
     const products = await Product.find(query).sort({ createdAt: -1 });
@@ -70,6 +76,10 @@ export const createProduct = async (req, res, next) => {
       usage,
       faqs,
       testimonials,
+      description,
+      inStock,
+      isFeatured,
+      isAvailable,
     } = req.body;
 
     const product = await Product.create({
@@ -84,6 +94,10 @@ export const createProduct = async (req, res, next) => {
       usage,
       faqs: faqs || [],
       testimonials: testimonials || [],
+      description: description || "Premium healthcare wellness formula crafted with natural ingredients.",
+      inStock: inStock !== undefined ? inStock : true,
+      isFeatured: isFeatured !== undefined ? isFeatured : false,
+      isAvailable: isAvailable !== undefined ? isAvailable : true,
     });
 
     res.status(201).json({

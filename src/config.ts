@@ -20,8 +20,12 @@ export const API_ENDPOINTS = {
   appointments: `${API_URL}/api/v1/appointments`,
   products: `${API_URL}/api/v1/products`,
   messages: `${API_URL}/api/v1/messages`,
+  blogs: `${API_URL}/api/v1/blogs`,
+  adminBlogs: `${API_URL}/api/v1/admin/blogs`,
   adminStats: `${API_URL}/api/v1/admin/dashboard/stats`,
   adminAppointments: `${API_URL}/api/v1/admin/appointments`,
   adminMessages: `${API_URL}/api/v1/admin/messages`,
   adminProducts: `${API_URL}/api/v1/products`,
+  login: `${API_URL}/api/v1/auth/login`,
+  authMe: `${API_URL}/api/v1/auth/me`,
 };

@@ -15,7 +15,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
   
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -23,11 +23,7 @@ export default function Navbar() {
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const notifications = [
-    { id: 1, text: "Your holistic consultation has been confirmed for May 28th.", time: "2 hrs ago" },
-    { id: 2, text: "Special offer: Get 10% off on Himalyan Shilajeet Resin this week.", time: "1 day ago" },
-    { id: 3, text: "Read our latest article on cultivating daily mindfulness.", time: "2 days ago" },
-  ];
+
 
   // Sync cart state with localStorage and handle custom events
   useEffect(() => {
@@ -120,29 +116,7 @@ export default function Navbar() {
               <a href="#blog" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Blog</a>
               <a href="#shop" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Shop</a>
               
-              {/* Notifications Trigger */}
-              <div className="relative">
-                <button 
-                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                  className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary flex items-center gap-1 cursor-pointer"
-                >
-                  Notifications
-                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                </button>
-                {isNotificationsOpen && (
-                  <div className="absolute right-0 mt-3 w-80 rounded-xl bg-background p-4 shadow-xl border border-foreground/5 animate-fade-up">
-                    <h4 className="font-serif text-sm font-semibold border-b border-foreground/5 pb-2 mb-2 text-primary">Notifications</h4>
-                    <div className="space-y-3">
-                      {notifications.map(n => (
-                        <div key={n.id} className="text-xs text-foreground/80 hover:bg-foreground/[0.02] p-1.5 rounded transition-colors">
-                          <p>{n.text}</p>
-                          <span className="text-[10px] text-foreground/40 mt-1 block">{n.time}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+
 
               <a href="#booking" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Book Online</a>
             </div>

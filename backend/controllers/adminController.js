@@ -1,5 +1,10 @@
 import Appointment from "../models/Appointment.js";
 import Message from "../models/Message.js";
+import {
+  sendInquiryReply,
+  sendBookingConfirmation,
+  sendBookingStatusUpdate,
+} from "../services/mailService.js";
 
 /**
  * @desc    Get all appointments (with optional search, status filtering, and sorting)
@@ -91,11 +96,7 @@ export const updateAppointmentStatus = async (req, res, next) => {
       });
     }
 
-    const appointment = await Appointment.findByIdAndUpdate(
-      req.params.id,
-      { status },
-      { new: true, runValidators: true }
-    );
+    const appointment = await Appointment.findById(req.params.id);
 
     if (!appointment) {
       return res.status(404).json({
@@ -104,10 +105,117 @@ export const updateAppointmentStatus = async (req, res, next) => {
       });
     }
 
+    const statusChanged = appointment.status !== status;
+    appointment.status = status;
+    await appointment.save();
+
+    if (statusChanged) {
+      // Trigger status update email (doesn't block the API response)
+      sendBookingStatusUpdate(appointment.email, appointment.name, {
+        date: appointment.date,
+        time: appointment.timeSlot,
+        service: appointment.service,
+        status: appointment.status,
+      }).catch((err) => {
+        console.error("Failed to send status update email:", err.message);
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: `Appointment status updated to ${status}`,
       data: appointment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Update appointment details (including notes, service, status, date, timeSlot)
+ * @route   PUT /api/v1/admin/appointments/:id
+ * @access  Private (Admin)
+ */
+export const updateAppointment = async (req, res, next) => {
+  try {
+    const { name, email, phone, date, timeSlot, condition, message, status, service, notes } = req.body;
+
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    const oldStatus = appointment.status;
+
+    // Update fields if provided
+    if (name !== undefined) appointment.name = name;
+    if (email !== undefined) appointment.email = email;
+    if (phone !== undefined) appointment.phone = phone;
+    if (date !== undefined) appointment.date = date;
+    if (timeSlot !== undefined) appointment.timeSlot = timeSlot;
+    if (condition !== undefined) appointment.condition = condition;
+    if (message !== undefined) appointment.message = message;
+    if (status !== undefined) appointment.status = status;
+    if (service !== undefined) appointment.service = service;
+    if (notes !== undefined) appointment.notes = notes;
+
+    await appointment.save();
+
+    const statusChanged = status !== undefined && oldStatus !== status;
+
+    if (statusChanged) {
+      sendBookingStatusUpdate(appointment.email, appointment.name, {
+        date: appointment.date,
+        time: appointment.timeSlot,
+        service: appointment.service,
+        status: appointment.status,
+      }).catch((err) => {
+        console.error("Failed to send status update email on PUT:", err.message);
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Appointment updated successfully",
+      data: appointment,
+    });
+  } catch (error) {
+    if (error.name === "ValidationError") {
+      res.status(400);
+    }
+    next(error);
+  }
+};
+
+/**
+ * @desc    Manually trigger email notifications to patient (booking confirmation)
+ * @route   POST /api/v1/admin/appointments/:id/notify-email
+ * @access  Private (Admin)
+ */
+export const sendManualAppointmentEmail = async (req, res, next) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    await sendBookingConfirmation(appointment.email, appointment.name, {
+      date: appointment.date,
+      time: appointment.timeSlot,
+      service: appointment.service,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Manual email confirmation sent successfully to ${appointment.email}`,
     });
   } catch (error) {
     next(error);
@@ -202,11 +310,31 @@ export const getDashboardStats = async (req, res, next) => {
  */
 export const getAdminMessages = async (req, res, next) => {
   try {
-    const { isRead } = req.query;
+    const { isRead, isStarred, isArchived, search } = req.query;
     const query = {};
 
     if (isRead !== undefined) {
       query.isRead = isRead === "true";
+    }
+
+    if (isStarred !== undefined) {
+      query.isStarred = isStarred === "true";
+    }
+
+    if (isArchived !== undefined) {
+      query.isArchived = isArchived === "true";
+    } else {
+      // By default, exclude archived messages from active views unless explicitly requested
+      query.isArchived = { $ne: true };
+    }
+
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      query.$or = [
+        { name: searchRegex },
+        { email: searchRegex },
+        { message: searchRegex },
+      ];
     }
 
     const messages = await Message.find(query).sort({ createdAt: -1 });
@@ -247,6 +375,111 @@ export const markMessageAsRead = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: `Message marked as ${updateVal ? "read" : "unread"}`,
+      data: message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Toggle contact message starred status
+ * @route   PATCH /api/v1/admin/messages/:id/star
+ * @access  Private (Admin)
+ */
+export const toggleMessageStarred = async (req, res, next) => {
+  try {
+    const message = await Message.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    message.isStarred = !message.isStarred;
+    await message.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Message ${message.isStarred ? "starred" : "unstarred"}`,
+      data: message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Toggle contact message archived status
+ * @route   PATCH /api/v1/admin/messages/:id/archive
+ * @access  Private (Admin)
+ */
+export const toggleMessageArchived = async (req, res, next) => {
+  try {
+    const message = await Message.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    message.isArchived = !message.isArchived;
+    // Mark as read automatically when archiving
+    if (message.isArchived) {
+      message.isRead = true;
+    }
+    await message.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Message ${message.isArchived ? "archived" : "unarchived"}`,
+      data: message,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Reply to a contact message via email
+ * @route   POST /api/v1/admin/messages/:id/reply
+ * @access  Private (Admin)
+ */
+export const replyToMessage = async (req, res, next) => {
+  try {
+    const { replyText } = req.body;
+
+    if (!replyText || replyText.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide reply message content",
+      });
+    }
+
+    const message = await Message.findById(req.params.id);
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    // Send email using mailer service
+    await sendInquiryReply(message.email, message.name, message.message, replyText);
+
+    // Save reply in history
+    message.replies.push({ message: replyText });
+    message.isRead = true; // Auto mark as read on reply
+    await message.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Reply email sent successfully and recorded",
       data: message,
     });
   } catch (error) {

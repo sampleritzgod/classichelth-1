@@ -29,6 +29,10 @@ interface Product {
   usage: string;
   faqs: FAQItem[];
   testimonials: TestimonialItem[];
+  description?: string;
+  inStock?: boolean;
+  isFeatured?: boolean;
+  isAvailable?: boolean;
 }
 
 export default function Products() {
@@ -243,9 +247,16 @@ export default function Products() {
 
                     {/* Product Info */}
                     <div className="flex flex-col flex-grow mb-4">
-                      <span className="text-[10px] font-semibold tracking-wider text-primary uppercase mb-1.5">
-                        {product.category}
-                      </span>
+                      <div className="flex justify-between items-baseline mb-1.5">
+                        <span className="text-[10px] font-semibold tracking-wider text-primary uppercase">
+                          {product.category}
+                        </span>
+                        {product.inStock === false && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100 uppercase tracking-wider">
+                            Sold Out
+                          </span>
+                        )}
+                      </div>
                       <h3 className="text-base font-semibold text-foreground group-hover:text-primary transition-colors mb-2">
                         {product.name}
                       </h3>
@@ -260,17 +271,27 @@ export default function Products() {
                     </div>
 
                     {/* Add To Cart Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleAddToCart(product, e)}
-                      className={`inline-flex w-full items-center justify-center rounded-full py-2.5 text-xs font-semibold tracking-wider uppercase transition-all duration-350 focus:outline-none cursor-pointer ${
-                        addedItems[product.id]
-                          ? "bg-primary text-white scale-[0.98]"
-                          : "bg-primary text-white hover:bg-primary-hover shadow-sm hover:shadow-md hover:shadow-primary/10"
-                      }`}
-                    >
-                      {addedItems[product.id] ? "Added!" : "Add to Cart"}
-                    </button>
+                    {product.inStock !== false ? (
+                      <button
+                        type="button"
+                        onClick={(e) => handleAddToCart(product, e)}
+                        className={`inline-flex w-full items-center justify-center rounded-full py-2.5 text-xs font-semibold tracking-wider uppercase transition-all duration-350 focus:outline-none cursor-pointer ${
+                          addedItems[product.id]
+                            ? "bg-primary text-white scale-[0.98]"
+                            : "bg-primary text-white hover:bg-primary-hover shadow-sm hover:shadow-md hover:shadow-primary/10"
+                        }`}
+                      >
+                        {addedItems[product.id] ? "Added!" : "Add to Cart"}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="inline-flex w-full items-center justify-center rounded-full py-2.5 text-xs font-semibold tracking-wider uppercase bg-foreground/10 text-foreground/45 border border-foreground/5 cursor-not-allowed"
+                      >
+                        Out of Stock
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -302,31 +323,66 @@ export default function Products() {
             <div className="md:col-span-5 flex flex-col items-center">
               <div className="relative w-full aspect-square rounded-2xl overflow-hidden border border-foreground/5 bg-foreground/[0.01] mb-6">
                 <Image src={detailProduct.image} alt={detailProduct.alt} fill className="object-cover" />
+                {detailProduct.inStock === false && (
+                  <div className="absolute inset-0 bg-white/60 backdrop-blur-xs flex items-center justify-center">
+                    <span className="bg-red-600 text-white font-serif font-bold text-xs uppercase px-4 py-1.5 rounded-full tracking-widest shadow-md">
+                      Out of Stock
+                    </span>
+                  </div>
+                )}
               </div>
               <h3 className="font-serif text-xl font-bold text-primary text-center mb-1">{detailProduct.name}</h3>
-              <span className="text-xs uppercase tracking-wider text-foreground/50 font-bold mb-4">{detailProduct.category}</span>
+              <span className="text-xs uppercase tracking-wider text-foreground/50 font-bold mb-3">{detailProduct.category}</span>
               
+              {/* Product Short Description */}
+              <p className="text-[11px] text-foreground/75 text-center leading-relaxed mb-4 max-w-xs">
+                {detailProduct.description || "Premium metabolic recovery formula hand-selected by our clinical specialists."}
+              </p>
+
               <div className="flex gap-x-3 items-baseline mb-6">
-                <span className="text-sm text-foreground/40 line-through">₹{detailProduct.originalPrice}</span>
+                <span className="text-xs text-foreground/40 line-through">₹{detailProduct.originalPrice}</span>
                 <span className="text-xl font-bold text-primary">₹{detailProduct.price}</span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => { handleAddToCart(detailProduct); setDetailProduct(null); }}
-                className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover shadow-md transition-all duration-300"
-              >
-                Add to Shopping Bag
-              </button>
+              {detailProduct.inStock !== false ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { handleAddToCart(detailProduct); setDetailProduct(null); }}
+                    className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover shadow-md transition-all duration-300 cursor-pointer"
+                  >
+                    Add to Shopping Bag
+                  </button>
 
-              <a
-                href={getWhatsAppUrl(`Hello! I would like to order ${detailProduct.name} (₹${detailProduct.price.toLocaleString()}) directly. Please let me know the details.`)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full rounded-full border border-primary text-primary py-3 text-sm font-semibold hover:bg-primary/5 shadow-xs transition-all duration-300 mt-3 text-center block"
-              >
-                Order on WhatsApp
-              </a>
+                  <a
+                    href={getWhatsAppUrl(`Hello! I would like to order ${detailProduct.name} (₹${detailProduct.price.toLocaleString()}) directly. Please let me know the details.`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full rounded-full border border-primary text-primary py-3 text-sm font-semibold hover:bg-primary/5 shadow-xs transition-all duration-300 mt-3 text-center block"
+                  >
+                    Order on WhatsApp
+                  </a>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full rounded-full bg-foreground/10 py-3 text-sm font-semibold text-foreground/45 border border-foreground/5 cursor-not-allowed"
+                  >
+                    Temporarily Unavailable
+                  </button>
+
+                  <a
+                    href={getWhatsAppUrl(`Hello! I'd like to check availability or join the waiting list for ${detailProduct.name}.`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full rounded-full border border-primary text-primary py-3 text-sm font-semibold hover:bg-primary/5 shadow-xs transition-all duration-300 mt-3 text-center block"
+                  >
+                    Join Waitlist (WhatsApp)
+                  </a>
+                </>
+              )}
             </div>
 
             {/* Right Side: Informative Tabs (Ingredients, Benefits, Usage, FAQ, Testimonials) */}

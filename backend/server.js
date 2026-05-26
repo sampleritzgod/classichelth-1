@@ -9,6 +9,8 @@ import appointmentRoutes from "./routes/appointmentRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
+import blogRoutes from "./routes/blogRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 
@@ -79,6 +81,8 @@ app.use("/api/v1", appointmentRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1", productRoutes);
 app.use("/api/v1", messageRoutes);
+app.use("/api/v1", blogRoutes);
+app.use("/api/v1/auth", authRoutes);
 
 // Error Handling Middlewares
 app.use(notFound);

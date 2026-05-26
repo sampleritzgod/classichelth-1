@@ -1,15 +1,52 @@
+import { AppError } from "../utils/appError.js";
+
 /**
  * Global centralized error handling middleware.
  * Intercepts any thrown errors and sends a clean JSON response.
  */
 const errorHandler = (err, req, res, next) => {
-  // If the status code is still 200 (default), change it to 500 (internal server error)
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  
+  let error = { ...err };
+  error.message = err.message;
+  error.stack = err.stack;
+
+  // 1. Mongoose Bad ObjectId Error
+  if (err.name === "CastError") {
+    const message = `Invalid resource identifier: ${err.value}`;
+    error = new AppError(message, 400);
+  }
+
+  // 2. Mongoose Duplicate Key Error
+  if (err.code === 11000) {
+    const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
+    const message = `Duplicate field value: ${value}. Please use another value!`;
+    error = new AppError(message, 400);
+  }
+
+  // 3. Mongoose Validation Error
+  if (err.name === "ValidationError") {
+    const errors = Object.values(err.errors).map((el) => el.message);
+    const message = `Invalid input data: ${errors.join(". ")}`;
+    error = new AppError(message, 400);
+  }
+
+  // 4. JWT JsonWebTokenError
+  if (err.name === "JsonWebTokenError") {
+    error = new AppError("Invalid session token. Please log in again.", 401);
+  }
+
+  // 5. JWT TokenExpiredError
+  if (err.name === "TokenExpiredError") {
+    error = new AppError("Your session has expired. Please log in again.", 401);
+  }
+
+  const statusCode = error.statusCode || 500;
+  const status = error.status || "error";
+
   res.status(statusCode).json({
     success: false,
-    message: err.message || "An unexpected error occurred",
-    stack: process.env.NODE_ENV === "production" ? null : err.stack,
+    status,
+    message: error.message || "An unexpected error occurred",
+    stack: process.env.NODE_ENV === "production" ? null : error.stack,
   });
 };
 

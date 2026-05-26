@@ -27,6 +27,10 @@ interface Product {
   usage: string;
   faqs: FAQItem[];
   testimonials: TestimonialItem[];
+  description?: string;
+  inStock?: boolean;
+  isFeatured?: boolean;
+  isAvailable?: boolean;
 }
 
 export default function AdminProducts() {
@@ -57,6 +61,11 @@ export default function AdminProducts() {
   const [ingredientsText, setIngredientsText] = useState(""); // Comma separated
   const [benefitsText, setBenefitsText] = useState(""); // Line separated
   
+  const [description, setDescription] = useState("");
+  const [inStock, setInStock] = useState(true);
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(true);
+
   // Sub-forms for FAQs & Testimonials
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [faqQ, setFaqQ] = useState("");
@@ -76,12 +85,16 @@ export default function AdminProducts() {
       setLoading(true);
       setError(null);
 
-      let url = API_ENDPOINTS.products;
-      if (categoryFilter !== "all") {
-        url += `?category=${encodeURIComponent(categoryFilter)}`;
-      }
+      // Pass admin=true so that we load all products regardless of availability
+      const url = `${API_ENDPOINTS.products}?admin=true${
+        categoryFilter !== "all" ? `&category=${encodeURIComponent(categoryFilter)}` : ""
+      }`;
 
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          Authorization: "Bearer mock_token",
+        },
+      });
       if (!response.ok) {
         throw new Error(`Server returned ${response.status}: ${response.statusText}`);
       }
@@ -104,6 +117,22 @@ export default function AdminProducts() {
     fetchProducts();
   }, [fetchProducts]);
 
+  // Handle local image file upload converting to Base64
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Image file size should be less than 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result as string); // base64 string
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Open Add Form Modal
   const openAddModal = () => {
     setCurrentProduct(null);
@@ -118,6 +147,10 @@ export default function AdminProducts() {
     setBenefitsText("");
     setFaqs([]);
     setTestimonials([]);
+    setDescription("Premium healthcare wellness formula crafted with natural ingredients.");
+    setInStock(true);
+    setIsFeatured(false);
+    setIsAvailable(true);
     setIsFormModalOpen(true);
   };
 
@@ -135,6 +168,10 @@ export default function AdminProducts() {
     setBenefitsText(prod.benefits.join("\n"));
     setFaqs(prod.faqs || []);
     setTestimonials(prod.testimonials || []);
+    setDescription(prod.description || "Premium healthcare wellness formula crafted with natural ingredients.");
+    setInStock(prod.inStock !== undefined ? prod.inStock : true);
+    setIsFeatured(prod.isFeatured !== undefined ? prod.isFeatured : false);
+    setIsAvailable(prod.isAvailable !== undefined ? prod.isAvailable : true);
     setIsFormModalOpen(true);
   };
 
@@ -166,7 +203,7 @@ export default function AdminProducts() {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim() || !price || !originalPrice || !image.trim() || !usage.trim()) {
+    if (!name.trim() || !price || !originalPrice || !image.trim() || !usage.trim() || !description.trim()) {
       showToast("Please fill in all required fields.", "error");
       return;
     }
@@ -183,6 +220,10 @@ export default function AdminProducts() {
       benefits: benefitsText.split("\n").map((b) => b.trim()).filter(Boolean),
       faqs,
       testimonials,
+      description: description.trim(),
+      inStock,
+      isFeatured,
+      isAvailable,
     };
 
     try {
@@ -453,30 +494,67 @@ export default function AdminProducts() {
                   />
                 </div>
 
-                {/* Image URL */}
-                <div>
-                  <label className="block text-xs font-bold text-foreground mb-1.5">Image Asset Path / URL *</label>
-                  <input
-                    type="text"
-                    required
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                    className="block w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
-                    placeholder="e.g. /images/product_supplement.png"
-                  />
+                {/* Image Configuration */}
+                <div className="sm:col-span-2 border-t border-foreground/5 pt-3">
+                  <label className="block text-xs font-bold text-primary mb-1.5">Product Image *</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1">
+                        Upload Image File (Base64)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="block w-full text-xs text-foreground/60 file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/15 file:cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1">
+                        Or Input Image URL
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={image}
+                        onChange={(e) => setImage(e.target.value)}
+                        className="block w-full rounded-lg border border-foreground/15 bg-background px-3 py-1.5 text-xs text-foreground focus:border-primary focus:outline-none"
+                        placeholder="e.g. /images/product_supplement.png"
+                      />
+                    </div>
+                  </div>
+                  {image && (
+                    <div className="mt-2 relative w-20 aspect-square rounded-lg overflow-hidden border border-foreground/5 bg-foreground/[0.02]">
+                      <img src={image} alt="Product preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Image Alt */}
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-foreground mb-1.5">Image Accessibility Alt *</label>
                   <input
                     type="text"
+                    required
                     value={alt}
                     onChange={(e) => setAlt(e.target.value)}
                     className="block w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none"
                     placeholder="Describe image for screenreaders"
                   />
                 </div>
+              </div>
+
+              {/* Product Short Description */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">Product Short Description *</label>
+                <textarea
+                  required
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="block w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none resize-y"
+                  placeholder="Premium Ayurvedic formula..."
+                />
               </div>
 
               {/* Usage guidelines */}
@@ -604,6 +682,48 @@ export default function AdminProducts() {
                   >
                     + Add Testimonial
                   </button>
+                </div>
+              </div>
+
+              {/* Toggle Switches */}
+              <div className="border-t border-foreground/5 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex items-center gap-x-2">
+                  <input
+                    type="checkbox"
+                    id="inStock"
+                    checked={inStock}
+                    onChange={(e) => setInStock(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded border-foreground/15 text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <label htmlFor="inStock" className="text-xs font-bold text-foreground cursor-pointer select-none">
+                    In Stock
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-x-2">
+                  <input
+                    type="checkbox"
+                    id="isFeatured"
+                    checked={isFeatured}
+                    onChange={(e) => setIsFeatured(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded border-foreground/15 text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <label htmlFor="isFeatured" className="text-xs font-bold text-foreground cursor-pointer select-none">
+                    Featured Product
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-x-2">
+                  <input
+                    type="checkbox"
+                    id="isAvailable"
+                    checked={isAvailable}
+                    onChange={(e) => setIsAvailable(e.target.checked)}
+                    className="h-4.5 w-4.5 rounded border-foreground/15 text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <label htmlFor="isAvailable" className="text-xs font-bold text-foreground cursor-pointer select-none">
+                    Public Visibility (Available)
+                  </label>
                 </div>
               </div>
 

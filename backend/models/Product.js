@@ -56,6 +56,24 @@ const productSchema = new mongoose.Schema(
     },
     faqs: [faqSchema],
     testimonials: [testimonialSchema],
+    description: {
+      type: String,
+      required: [true, "Please add a description"],
+      trim: true,
+      default: "Premium healthcare wellness formula crafted with natural ingredients.",
+    },
+    inStock: {
+      type: Boolean,
+      default: true,
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    isAvailable: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

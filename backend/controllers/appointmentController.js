@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
+import { sendBookingConfirmation } from "../services/mailService.js";
 
 /**
  * @desc    Create a new appointment
@@ -14,7 +15,7 @@ export const createAppointment = async (req, res, next) => {
   );
 
   try {
-    const { name, email, phone, date, timeSlot, condition, message } = req.body;
+    const { name, email, phone, date, timeSlot, condition, message, service } = req.body;
 
     // Create and store the appointment in MongoDB
     const appointment = new Appointment({
@@ -25,11 +26,21 @@ export const createAppointment = async (req, res, next) => {
       timeSlot,
       condition,
       message,
+      service: service || "General Wellness Consultation",
     });
 
     await appointment.save();
 
     console.log("[API] Appointment saved successfully to MongoDB:", appointment._id);
+
+    // Send confirmation email asynchronously (do not block client response)
+    sendBookingConfirmation(appointment.email, appointment.name, {
+      date: appointment.date,
+      time: appointment.timeSlot,
+      service: appointment.service,
+    }).catch((err) => {
+      console.error("✉️ Failed to send email confirmation for appointment:", err.message);
+    });
 
     res.status(201).json({
       success: true,

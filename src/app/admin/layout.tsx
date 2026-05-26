@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { API_ENDPOINTS } from "@/config";
 
 interface NavItem {
   name: string;
@@ -16,7 +17,57 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [adminEmail, setAdminEmail] = useState("admin@example.com");
+
+  useEffect(() => {
+    if (pathname === "/admin/login") {
+      setAuthLoading(false);
+      return;
+    }
+
+    const verifySession = async () => {
+      const token = localStorage.getItem("admin_token");
+      const email = localStorage.getItem("admin_email");
+      if (email) setAdminEmail(email);
+
+      if (!token) {
+        router.push("/admin/login");
+        return;
+      }
+
+      try {
+        const response = await fetch(API_ENDPOINTS.authMe, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const json = await response.json();
+        if (response.ok && json.success) {
+          setAuthLoading(false);
+        } else {
+          // Token expired or invalid
+          localStorage.removeItem("admin_token");
+          router.push("/admin/login");
+        }
+      } catch (err) {
+        console.error("Auth verification failed:", err);
+        // Fallback for development if server is temporarily down or offline
+        setAuthLoading(false);
+      }
+    };
+
+    verifySession();
+  }, [pathname, router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_email");
+    localStorage.removeItem("admin_role");
+    router.push("/admin/login");
+  };
 
   const navigation: NavItem[] = [
     {
@@ -55,7 +106,31 @@ export default function AdminLayout({
         </svg>
       ),
     },
+    {
+      name: "Blogs Journal",
+      href: "/admin/blogs",
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+    },
   ];
+
+  if (pathname === "/admin/login") {
+    return <>{children}</>;
+  }
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+        <div className="text-center space-y-4">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
+          <p className="text-xs text-foreground/50 font-serif">Verifying administrative session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -103,8 +178,8 @@ export default function AdminLayout({
               </span>
             </div>
             <div className="ml-3">
-              <p className="text-xs font-semibold text-foreground">Admin Tester</p>
-              <p className="text-[10px] text-foreground/50 font-medium">admin@example.com</p>
+              <p className="text-xs font-semibold text-foreground">Practitioner</p>
+              <p className="text-[10px] text-foreground/50 font-medium">{adminEmail}</p>
             </div>
           </div>
         </div>
@@ -128,12 +203,12 @@ export default function AdminLayout({
             </span>
           </div>
 
-          <Link
-            href="/"
-            className="text-xs font-semibold text-primary hover:underline"
+          <button
+            onClick={handleLogout}
+            className="text-xs font-bold text-red-600 hover:underline cursor-pointer"
           >
-            Exit
-          </Link>
+            Logout
+          </button>
         </header>
 
         {/* Mobile Menu Drawer Overlay */}
@@ -198,13 +273,19 @@ export default function AdminLayout({
             System status: <span className="text-[#4caf50] font-semibold">Active</span> • Powered by MongoDB Atlas
           </div>
 
-          <div className="flex items-center gap-x-6">
+          <div className="flex items-center gap-x-3">
             <Link
               href="/"
-              className="text-xs font-semibold text-primary hover:text-primary-hover border border-primary/20 px-4 py-2 rounded-full hover:bg-primary/5 transition-all"
+              className="text-xs font-semibold text-foreground/70 hover:text-foreground border border-foreground/15 px-4 py-2 rounded-full hover:bg-foreground/5 transition-all"
             >
               Exit to Clinic Site
             </Link>
+            <button
+              onClick={handleLogout}
+              className="text-xs font-semibold text-red-600 hover:text-red-700 border border-red-200/50 px-4 py-2 rounded-full hover:bg-red-50 transition-all cursor-pointer"
+            >
+              Log Out
+            </button>
           </div>
         </header>
 

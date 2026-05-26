@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import connectDB from "../config/db.js";
 import Product from "../models/Product.js";
+import Blog from "../models/Blog.js";
+import User from "../models/User.js";
 
 // Load environment variables from backend directory
 dotenv.config();
@@ -14,6 +16,10 @@ const initialProducts = [
     image: "/images/service_consultation.png",
     category: "Tonics & Syrups",
     alt: "Hridya Mitra cardiac support herbal syrup bottle",
+    description: "Holistic cardiac support herbal syrup crafted to strengthen cardiovascular muscles and promote calm vitality.",
+    inStock: true,
+    isFeatured: true,
+    isAvailable: true,
     ingredients: ["Arjuna Bark", "Pushkarmool", "Shankhpushpi", "Ashwagandha", "Brahmi"],
     benefits: [
       "Supports cardiovascular muscle strength.",
@@ -36,6 +42,10 @@ const initialProducts = [
     image: "/images/u1st_product_shilajit.png",
     category: "Supplements",
     alt: "Premium Himalyan Shilajeet Resin jar with golden lid and black packaging box",
+    description: "100% purified Himalayan Shilajit resin containing over 80+ essential minerals to restore daily stamina and cellular energy.",
+    inStock: true,
+    isFeatured: true,
+    isAvailable: true,
     ingredients: ["100% Purified Himalayan Shilajit (Shudh Shilajit) resin"],
     benefits: [
       "Rich in Fulvic Acid and over 80+ essential cellular trace minerals.",
@@ -58,6 +68,10 @@ const initialProducts = [
     image: "/images/product_supplement.png",
     category: "Supplements",
     alt: "Triphala Guggul digestive health organic tablets",
+    description: "Classical Ayurvedic detoxifying formulation to relieve chronic bloating, cleanse the digestive tract, and improve metabolic fire.",
+    inStock: true,
+    isFeatured: false,
+    isAvailable: true,
     ingredients: ["Amalaki (Amla)", "Bibhitaki", "Haritaki", "Shuddh Guggul Resin"],
     benefits: [
       "Gently cleanses the digestive tract and relieves chronic bloating.",
@@ -80,6 +94,10 @@ const initialProducts = [
     image: "/images/service_skincare.png",
     category: "Tonics & Syrups",
     alt: "Univeer immune boosting herbal syrup bottle",
+    description: "Highly potent immune booster and natural blood purifier formulated with Giloy, Neem, and Turmeric.",
+    inStock: true,
+    isFeatured: false,
+    isAvailable: true,
     ingredients: ["Giloy (Guduchi)", "Tulsi (Holy Basil)", "Neem", "Haldi (Turmeric)", "Mulethi (Licorice)"],
     benefits: [
       "Builds robust resistance against seasonal infections and coughs.",
@@ -102,6 +120,10 @@ const initialProducts = [
     image: "/images/product_serum.png",
     category: "Tonics & Syrups",
     alt: "Digi Plus digestive care organic syrup bottle",
+    description: "Fast-acting sugar-free digestive syrup designed to instantly relieve acidity, flatulence, and stomach cramps.",
+    inStock: true,
+    isFeatured: false,
+    isAvailable: true,
     ingredients: ["Jeera (Cumin)", "Saunf (Fennel)", "Ajwain (Carom)", "Pudina (Mint)", "Chitraka"],
     benefits: [
       "Instantly relieves acidity, flatulence, and stomach cramps.",
@@ -124,6 +146,10 @@ const initialProducts = [
     image: "/images/product_oil.png",
     category: "Wellness Oils",
     alt: "Pida Harak joint and muscular pain relief oil bottle",
+    description: "Deep penetrating joint and muscular pain relief oil containing Mahanarayan, Wintergreen, and Eucalyptus oils.",
+    inStock: true,
+    isFeatured: false,
+    isAvailable: true,
     ingredients: ["Mahanarayan Oil", "Gandhapura Oil (Wintergreen)", "Nilgiri (Eucalyptus) Oil", "Shallaki Extract"],
     benefits: [
       "Deep penetrating action for joint, knee, and back pain relief.",
@@ -138,50 +164,56 @@ const initialProducts = [
     testimonials: [
       { author: "Guru Das, Indore", text: "My chronic back stiffness has reduced by 80%. The soothing warm feel after application is amazing." }
     ]
+  }
+];
+
+const initialBlogs = [
+  {
+    title: "Understanding Ayurvedic Doshas: Vata, Pitta, and Kapha",
+    snippet: "Discover how the three primary life energies determine your physical constitution and mental health in classical Ayurvedic science.",
+    content: `
+      <h3>Introduction to Doshas</h3>
+      <p>In Ayurvedic medicine, health is defined as the perfect balance of the three body humors or energies, known as <strong>Doshas</strong>: Vata, Pitta, and Kapha. Each individual has a unique combination of these three forces, which determines their physical constitution (Prakriti) and psychological traits.</p>
+      
+      <h3>The Three Bio-Energies</h3>
+      <ul>
+        <li><strong>Vata (Space & Air):</strong> Represents movement, nervous energy, and circulation. When balanced, it fosters creativity and flexibility. When imbalanced, it causes anxiety, dry skin, and constipation.</li>
+        <li><strong>Pitta (Fire & Water):</strong> Controls digestion, metabolism, and body temperature. Balanced Pitta brings sharp intelligence and determination. Imbalanced Pitta causes anger, skin rashes, and acid reflux.</li>
+        <li><strong>Kapha (Water & Earth):</strong> Governs structure, fluid balance, and physical strength. Balanced Kapha brings love, stability, and calm endurance. Imbalanced Kapha triggers sluggishness, weight gain, and sinus congestion.</li>
+      </ul>
+      
+      <h3>Finding Your Balance</h3>
+      <p>By adjusting your diet, daily routines, and herbal therapies to match your primary dosha, you can restore metabolic harmony and prevent chronic health issues before they arise.</p>
+    `,
+    image: "/images/service_consultation.png",
+    category: "Mindfulness",
+    isPublished: true,
+    publishedAt: new Date(),
+    seoTitle: "Ayurvedic Doshas Guide: Balancing Vata, Pitta, Kapha",
+    seoDescription: "An in-depth guide on the three Ayurvedic doshas and how to align your nutrition and daily habits to restore metabolic health."
   },
   {
-    name: "Jeevan Rakshak Harad",
-    originalPrice: 750,
-    price: 580,
-    image: "/images/product_supplement.png",
-    category: "Supplements",
-    alt: "Jeevan Rakshak Harad detoxifying ayurvedic powder",
-    ingredients: ["Chhoti Harad (Terminalia chebula)", "Saindhav Salt", "Hing (Asafoetida)"],
-    benefits: [
-      "A classical rejuvenator that corrects gastrointestinal sluggishness.",
-      "Clears deep-seated toxins (Ama) from the digestive system.",
-      "Helps relieve gas, stomach heaviness, and mild constipation."
-    ],
-    usage: "Consume 1/2 to 1 teaspoon with warm water at bedtime to ensure smooth morning elimination.",
-    faqs: [
-      { q: "What makes Harad so special in Ayurveda?", a: "Harad is known as the 'Mother of Herbs' because it balances all three doshas (Vata, Pitta, Kapha) and acts as a daily internal cleanser." },
-      { q: "Is it bitter?", a: "It has a traditional astringent, salty, and herbal taste. If you find the taste strong, you can consume it with a teaspoon of organic honey." }
-    ],
-    testimonials: [
-      { author: "Sneha G., Bhopal", text: "Jeevan Rakshak Harad has corrected my bowel habits. I feel much lighter and more energetic throughout the day." }
-    ]
-  },
-  {
-    name: "Aloe Vera Gel & Juice Kit",
-    originalPrice: 550,
-    price: 395,
-    image: "/images/about_practitioner.png",
-    category: "Wellness Oils",
-    alt: "Organic Aloe Vera soothing gel and pure health juice",
-    ingredients: ["99% Pure Organic Aloe Vera Inner-Leaf Pulp", "Vitamin E (Natural Preservative)"],
-    benefits: [
-      "Hydrates, soothes, and cools inflamed or dry skin.",
-      "Aloe juice supports detoxification, gut lining recovery, and liver health.",
-      "Aids in healing sunburns, minor cuts, and reduces acne flares."
-    ],
-    usage: "Gel: Apply topically to face and body as needed. Juice: Take 20-30 ml with warm water first thing in the morning.",
-    faqs: [
-      { q: "Is this product chemical-free?", a: "Yes, our Aloe Gel is free from artificial colors, parabens, and synthetic fragrances. It is directly cold-stabilized from fresh organic leaves." },
-      { q: "How should I store the juice?", a: "Keep the Aloe juice bottle refrigerated once opened, and consume it within 45 days." }
-    ],
-    testimonials: [
-      { author: "Nisha J., Dewas", text: "The aloe gel is extremely pure. It doesn't have that fake green color or sticky smell. It works wonders on my sensitive skin." }
-    ]
+    title: "5 Simple Morning Rituals for Systemic Detoxification",
+    snippet: "Kickstart your daily wellness journey with these clean, time-tested Ayurvedic habits to clear digestive congestion and boost your morning energy.",
+    content: `
+      <h3>Daily Morning Rejuvenation</h3>
+      <p>How you begin your day sets the tone for your digestive strength (Agni) and mental clarity. Ayurveda recommends a sequence of simple, clean habits to clear metabolic toxins (Ama) accumulated overnight.</p>
+      
+      <h3>The 5 Habits</h3>
+      <ol>
+        <li><strong>Warm Water with Lemon:</strong> Drinking a glass of warm water stimulates intestinal peristalsis and wakes up the liver.</li>
+        <li><strong>Tongue Scraping (Jihwa Nirlekhan):</strong> Scraping the tongue with a copper scraper removes toxic coating, improves taste perception, and clears oral bacteria.</li>
+        <li><strong>Oil Pulling (Gandusha):</strong> Swishing a tablespoon of organic sesame or coconut oil in your mouth for 5-10 minutes strengthens teeth and gums and pulls out fat-soluble toxins.</li>
+        <li><strong>Gentle Yoga & Pranayama:</strong> 10 minutes of sun salutations and deep breathing oxygenates tissues and stimulates lymphatic drainage.</li>
+        <li><strong>Dry Brushing (Garshana):</strong> Stimulates lymphatic circulation and exfoliates skin, preparing the body for elimination.</li>
+      </ol>
+    `,
+    image: "/images/service_skincare.png",
+    category: "Nutrition",
+    isPublished: true,
+    publishedAt: new Date(),
+    seoTitle: "Ayurvedic Morning Detox: 5 Habits for Daily Vitality",
+    seoDescription: "Learn the top 5 classical Ayurvedic morning rituals to detoxify your system naturally, clear bloating, and feel lighter."
   }
 ];
 
@@ -190,13 +222,32 @@ const seedDB = async () => {
     console.log("[Seeder] Connecting to database...");
     await connectDB();
 
+    // 1. Seed Products
     console.log("[Seeder] Clearing existing products...");
     await Product.deleteMany({});
-    console.log("[Seeder] Products cleared.");
-
     console.log("[Seeder] Inserting new initial products...");
     const createdProducts = await Product.insertMany(initialProducts);
     console.log(`[Seeder] Seeded ${createdProducts.length} products successfully.`);
+
+    // 2. Seed Blogs
+    console.log("[Seeder] Clearing existing blogs...");
+    await Blog.deleteMany({});
+    console.log("[Seeder] Inserting sample blogs...");
+    // The pre-save hooks in Blog.js will auto-compute readingTime and slugs!
+    const createdBlogs = await Blog.insertMany(initialBlogs);
+    console.log(`[Seeder] Seeded ${createdBlogs.length} blog posts successfully.`);
+
+    // 3. Seed Default Admin User
+    console.log("[Seeder] Clearing existing users...");
+    await User.deleteMany({});
+    console.log("[Seeder] Creating default administrator user...");
+    const adminUser = new User({
+      email: "admin@u1stcreation.com",
+      password: "AdminPass123!",
+      role: "admin"
+    });
+    await adminUser.save();
+    console.log(`[Seeder] Created admin credentials: admin@u1stcreation.com / AdminPass123!`);
 
     console.log("[Seeder] Database seeding completed successfully.");
     process.exit(0);
