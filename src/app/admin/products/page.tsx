@@ -92,7 +92,7 @@ export default function AdminProducts() {
 
       const response = await fetch(url, {
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
       if (!response.ok) {
@@ -239,7 +239,7 @@ export default function AdminProducts() {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
         body: JSON.stringify(payload),
       });
@@ -263,7 +263,7 @@ export default function AdminProducts() {
       const response = await fetch(`${API_ENDPOINTS.adminProducts}/${id}`, {
         method: "DELETE",
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 

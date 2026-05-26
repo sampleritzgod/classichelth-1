@@ -82,7 +82,7 @@ export default function AdminAppointments() {
 
       const response = await fetch(`${API_ENDPOINTS.adminAppointments}?${params.toString()}`, {
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 
@@ -120,7 +120,7 @@ export default function AdminAppointments() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
         body: JSON.stringify({ status: newStatus }),
       });
@@ -179,7 +179,7 @@ export default function AdminAppointments() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
         body: JSON.stringify(editForm),
       });
@@ -211,7 +211,7 @@ export default function AdminAppointments() {
       const response = await fetch(`${API_ENDPOINTS.adminAppointments}/${selectedAppointment._id}/notify-email`, {
         method: "POST",
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 
@@ -234,7 +234,7 @@ export default function AdminAppointments() {
       const response = await fetch(`${API_ENDPOINTS.adminAppointments}/${id}`, {
         method: "DELETE",
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 

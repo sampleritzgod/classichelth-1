@@ -39,7 +39,11 @@ export default function AdminDashboard() {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(API_ENDPOINTS.adminStats);
+      const res = await fetch(API_ENDPOINTS.adminStats, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
+        },
+      });
       if (!res.ok) {
         throw new Error(`Server returned ${res.status}: ${res.statusText}`);
       }

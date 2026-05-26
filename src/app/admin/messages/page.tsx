@@ -68,7 +68,7 @@ export default function AdminMessages() {
 
       const response = await fetch(url, {
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 
@@ -101,7 +101,7 @@ export default function AdminMessages() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
         body: JSON.stringify({ isRead: targetState }),
       });
@@ -128,7 +128,7 @@ export default function AdminMessages() {
       const response = await fetch(`${API_ENDPOINTS.adminMessages}/${id}/star`, {
         method: "PATCH",
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 
@@ -155,7 +155,7 @@ export default function AdminMessages() {
       const response = await fetch(`${API_ENDPOINTS.adminMessages}/${id}/archive`, {
         method: "PATCH",
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 
@@ -195,7 +195,7 @@ export default function AdminMessages() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
         body: JSON.stringify({ replyText }),
       });
@@ -227,7 +227,7 @@ export default function AdminMessages() {
       const response = await fetch(`${API_ENDPOINTS.adminMessages}/${id}`, {
         method: "DELETE",
         headers: {
-          Authorization: "Bearer mock_token",
+          Authorization: `Bearer ${localStorage.getItem("admin_token") || "mock_token"}`,
         },
       });
 
