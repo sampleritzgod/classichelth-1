@@ -3,16 +3,14 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const {
-  SMTP_HOST,
-  SMTP_PORT,
-  SMTP_USER,
-  SMTP_PASS,
-  SMTP_FROM,
-} = process.env;
+const SMTP_USER = process.env.SMTP_EMAIL || process.env.SMTP_USER;
+const SMTP_PASS = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 587;
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || "u1stcreation1993@gmail.com";
 
 // Validate SMTP config. If not configured, print warnings and run in mock mode
-const isMailConfigured = !!(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS);
+const isMailConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
 let transporter = null;
 
@@ -322,4 +320,126 @@ export const sendBookingStatusUpdate = async (email, name, appointment) => {
   );
 
   return sendMail({ to: email, subject, html, text });
+};
+
+/**
+ * Send Admin Appointment Notification Email
+ */
+export const sendAdminAppointmentNotification = async (appointment) => {
+  const adminEmail = process.env.SMTP_EMAIL || "u1stcreation1993@gmail.com";
+  const subject = `[New Booking] Appointment with ${appointment.name}`;
+  
+  const dateStr = new Date(appointment.date).toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const text = `New Appointment Booking Details:\n\n` +
+    `Patient Name: ${appointment.name}\n` +
+    `Email: ${appointment.email}\n` +
+    `Phone: ${appointment.phone}\n` +
+    `Service: ${appointment.service || "General Wellness Consultation"}\n` +
+    `Date: ${dateStr}\n` +
+    `Time Slot: ${appointment.timeSlot || appointment.time}\n` +
+    `Symptoms/Concern: ${appointment.condition || "Not specified"}\n` +
+    `Message: ${appointment.message || "No message left"}\n`;
+
+  const html = getHtmlTemplate(
+    "New Booking Notification",
+    `
+    <p>Dear Administrator,</p>
+    <p>A new appointment has been scheduled through the U 1st Creation website. Below are the booking details:</p>
+    
+    <div style="background-color: #fbfaf7; border: 1px solid #e9e6df; padding: 24px; border-radius: 12px; margin: 24px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70; width: 35%;">Patient Name:</td>
+          <td style="padding: 6px 0; color: #1c3325; font-weight: bold;">${appointment.name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Email:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${appointment.email}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Phone:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${appointment.phone}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Service:</td>
+          <td style="padding: 6px 0; color: #1c3325; font-weight: bold;">${appointment.service || "General Wellness Consultation"}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Date:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${dateStr}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Time Slot:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${appointment.timeSlot || appointment.time}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Concern:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${appointment.condition || "Not specified"}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+    <p style="font-size: 13px; color: #6e7a70;">Message from patient:</p>
+    <div class="quote-box">
+      "${appointment.message || "No booking message left by the client."}"
+    </div>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="https://your-first-creation.vercel.app/admin/appointments" class="btn">Manage in Admin Board</a>
+    </div>
+    `
+  );
+
+  return sendMail({ to: adminEmail, subject, html, text });
+};
+
+/**
+ * Send Admin Message/Inquiry Notification Email
+ */
+export const sendAdminMessageNotification = async (message) => {
+  const adminEmail = process.env.SMTP_EMAIL || "u1stcreation1993@gmail.com";
+  const subject = `[New Contact Inquiry] from ${message.name}`;
+
+  const text = `New Contact Form Inquiry Details:\n\n` +
+    `Sender Name: ${message.name}\n` +
+    `Email: ${message.email}\n` +
+    `Message:\n${message.message}\n`;
+
+  const html = getHtmlTemplate(
+    "New Contact Form Submission",
+    `
+    <p>Dear Administrator,</p>
+    <p>A visitor has submitted a new inquiry through the contact form on your website.</p>
+    
+    <div style="background-color: #fbfaf7; border: 1px solid #e9e6df; padding: 24px; border-radius: 12px; margin: 24px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70; width: 35%;">Sender Name:</td>
+          <td style="padding: 6px 0; color: #1c3325; font-weight: bold;">${message.name}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Email:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${message.email}</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="divider"></div>
+    <p style="font-size: 13px; color: #6e7a70;">Message body:</p>
+    <div class="quote-box">
+      "${message.message}"
+    </div>
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="https://your-first-creation.vercel.app/admin/messages" class="btn">View & Reply in Inbox</a>
+    </div>
+    `
+  );
+
+  return sendMail({ to: adminEmail, subject, html, text });
 };

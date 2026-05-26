@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { API_ENDPOINTS } from "@/config";
-import { getWhatsAppUrl } from "@/utils/whatsapp";
+import { getWhatsAppUrl, WHATSAPP_TEMPLATES } from "@/utils/whatsapp";
 
 interface Appointment {
   _id: string;
@@ -61,6 +61,7 @@ export default function AdminAppointments() {
 
   const [savingDetails, setSavingDetails] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [whatsappTemplate, setWhatsappTemplate] = useState<"status" | "followup" | "general">("status");
 
   // Trigger Toast helper
   const showToast = (message: string, type: "success" | "error" = "success") => {
@@ -254,27 +255,35 @@ export default function AdminAppointments() {
   };
 
   // Build country-code corrected phone for WhatsApp link
-  const getWhatsAppMessageLink = (booking: Appointment) => {
+  const getWhatsAppMessageLink = (booking: Appointment, type: "status" | "followup" | "general" = "status") => {
     let rawPhone = booking.phone.replace(/[^0-9]/g, "");
     if (rawPhone.length === 10) {
       rawPhone = "91" + rawPhone; // Default Indian country code prefix
     }
 
-    let msg = "";
     const formattedDate = new Date(booking.date).toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
     });
 
-    if (booking.status === "confirmed") {
-      msg = `Hello ${booking.name}, your wellness session at U 1st Creation scheduled for ${formattedDate} at ${booking.timeSlot} is confirmed. We look forward to welcoming you!`;
-    } else if (booking.status === "completed") {
-      msg = `Hello ${booking.name}, thank you for visiting U 1st Creation today. We hope you had a relaxing therapy session. We'd love to hear your feedback!`;
-    } else if (booking.status === "cancelled") {
-      msg = `Hello ${booking.name}, your appointment on ${formattedDate} at ${booking.timeSlot} has been cancelled. Please let us know if you wish to reschedule.`;
+    let msg = "";
+    if (type === "followup") {
+      msg = WHATSAPP_TEMPLATES.followUpReminder(booking.name);
+    } else if (type === "general") {
+      msg = `Hello ${booking.name}, this is U 1st Creation Wellness Clinic. We are reaching out to follow up on your wellness inquiry. Let us know how we can assist you!`;
     } else {
-      msg = `Hello ${booking.name}, thank you for booking a wellness consultation with U 1st Creation. We are reviewing your request for ${formattedDate} at ${booking.timeSlot} and will confirm it shortly.`;
+      // status templates
+      const serviceName = booking.service || "Wellness Consultation";
+      if (booking.status === "confirmed") {
+        msg = WHATSAPP_TEMPLATES.appointmentConfirmed(booking.name, formattedDate, booking.timeSlot, serviceName);
+      } else if (booking.status === "completed") {
+        msg = WHATSAPP_TEMPLATES.appointmentCompleted(booking.name, serviceName);
+      } else if (booking.status === "cancelled") {
+        msg = WHATSAPP_TEMPLATES.appointmentCancelled(booking.name, formattedDate, booking.timeSlot, serviceName);
+      } else {
+        msg = `Hello ${booking.name}, thank you for booking a wellness consultation with U 1st Creation. We are reviewing your request for ${formattedDate} at ${booking.timeSlot} and will confirm it shortly.`;
+      }
     }
 
     return getWhatsAppUrl(msg, rawPhone);
@@ -486,11 +495,24 @@ export default function AdminAppointments() {
                   <tr key={booking._id} className="hover:bg-accent-soft/10 transition-colors">
                     {/* Patient Column */}
                     <td className="py-5 px-6">
-                      <div className="font-serif text-sm font-semibold text-foreground">
+                      <div className="font-serif text-sm font-semibold text-foreground font-semibold">
                         {booking.name}
                       </div>
                       <div className="text-[11px] text-foreground/50 mt-0.5">{booking.email}</div>
-                      <div className="text-[11px] text-foreground/50 mt-0.5 font-mono">{booking.phone}</div>
+                      <div className="text-[11px] text-foreground/50 mt-0.5 font-mono flex items-center gap-1.5">
+                        <span>{booking.phone}</span>
+                        <a
+                          href={getWhatsAppUrl(`Hello ${booking.name}, this is U 1st Creation. We are contacting you regarding your booking request.`, booking.phone)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-green-600 hover:text-green-700 transition-colors"
+                          title="Quick WhatsApp Chat"
+                        >
+                          <svg className="h-3 w-3 inline cursor-pointer" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.919 9.919 0 0 0 4.777 1.224h.005c5.505 0 9.99-4.478 9.99-9.985 0-2.67-1.037-5.18-2.92-7.062C17.18 3.037 14.673 2 12.012 2zm5.727 14.128c-.25.703-1.46 1.282-1.996 1.343-.493.056-.995.27-3.13-.578-2.724-1.082-4.49-3.842-4.626-4.02-.136-.18-1.096-1.455-1.096-2.775 0-1.32.693-1.966.943-2.228.25-.262.545-.328.727-.328.182 0 .364.002.523.01.168.008.393-.063.614.47.228.55.773 1.884.84 2.018.069.135.114.293.023.473-.09.18-.136.293-.273.45-.136.16-.285.358-.409.48-.136.136-.28.285-.12.56.16.273.708 1.168 1.522 1.89.16.14.3.26.45.33.15.07.29.08.4.06.11-.02.36-.145.45-.33.1-.18.23-.42.34-.63.11-.21.23-.18.39-.12.16.06 1.046.49 1.228.58.18.09.3.135.34.208.046.073.046.42-.204 1.123z" />
+                          </svg>
+                        </a>
+                      </div>
                     </td>
 
                     {/* Service/Msg Column */}
@@ -745,22 +767,103 @@ export default function AdminAppointments() {
               />
             </div>
 
-            {/* Email notification management section */}
-            <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Action Control Panel */}
+            <div className="border-t border-foreground/5 pt-5 space-y-4">
               <div>
-                <h4 className="text-xs font-bold text-primary">Patient Email Notifications</h4>
-                <p className="text-[10px] text-foreground/50 mt-0.5">
-                  Confirmations and updates are automatically triggered on status changes. Use this trigger to manually resend.
+                <h4 className="text-xs font-bold text-primary uppercase tracking-wider mb-2">Administrative Control Panel</h4>
+                <p className="text-[10px] text-foreground/50 leading-relaxed mb-3">
+                  Directly dispatch status updates, manual confirmation emails, or generate client WhatsApp links.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleResendEmail}
-                disabled={sendingEmail}
-                className="px-4 py-2 bg-white hover:bg-foreground/5 border border-primary/20 rounded-full text-xs font-semibold text-primary transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
-              >
-                {sendingEmail ? "Sending Notification..." : "Resend Confirmation Email"}
-              </button>
+
+              {/* Status Update Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange(selectedAppointment._id, "confirmed")}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer text-center ${
+                    editForm.status === "confirmed"
+                      ? "bg-green-600 text-white border-green-600 shadow-sm"
+                      : "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                  }`}
+                >
+                  Confirm Appointment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange(selectedAppointment._id, "cancelled")}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer text-center ${
+                    editForm.status === "cancelled"
+                      ? "bg-red-600 text-white border-red-600 shadow-sm"
+                      : "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                  }`}
+                >
+                  Cancel Appointment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleStatusChange(selectedAppointment._id, "completed")}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer text-center ${
+                    editForm.status === "completed"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                  }`}
+                >
+                  Complete Appointment
+                </button>
+              </div>
+
+              {/* Communication Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-accent-soft/30 p-4 rounded-xl border border-foreground/5">
+                {/* Email channels */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider block">Email Channels</span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResendEmail}
+                      disabled={sendingEmail}
+                      className="flex-1 px-3 py-2 bg-white hover:bg-foreground/5 border border-primary/20 rounded-lg text-xs font-semibold text-primary transition-all disabled:opacity-50 text-center cursor-pointer"
+                    >
+                      {sendingEmail ? "Sending..." : "Send Email Notification"}
+                    </button>
+                    <a
+                      href={`mailto:${selectedAppointment.email}?subject=Regarding Your Appointment at U 1st Creation`}
+                      className="px-3 py-2 bg-white hover:bg-foreground/5 border border-foreground/15 rounded-lg text-xs font-semibold text-foreground/80 transition-all text-center flex items-center justify-center cursor-pointer"
+                      title="Reply to Customer"
+                    >
+                      Reply to Customer
+                    </a>
+                  </div>
+                </div>
+
+                {/* WhatsApp channels */}
+                <div className="space-y-2">
+                  <span className="text-[10px] font-bold text-foreground/50 uppercase tracking-wider block">WhatsApp Updates</span>
+                  <div className="flex gap-2 items-center">
+                    <select
+                      value={whatsappTemplate}
+                      onChange={(e) => setWhatsappTemplate(e.target.value as any)}
+                      className="px-2 py-2 border border-foreground/15 rounded-lg bg-white text-[11px] focus:outline-none focus:border-primary cursor-pointer w-1/2"
+                    >
+                      <option value="status">Status Update</option>
+                      <option value="followup">Follow-up Reminder</option>
+                      <option value="general">General Inquiry</option>
+                    </select>
+                    <a
+                      href={getWhatsAppMessageLink(selectedAppointment, whatsappTemplate)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold text-center transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.993L2 22l5.233-1.371a9.919 9.919 0 0 0 4.777 1.224h.005c5.505 0 9.99-4.478 9.99-9.985 0-2.67-1.037-5.18-2.92-7.062C17.18 3.037 14.673 2 12.012 2zm5.727 14.128c-.25.703-1.46 1.282-1.996 1.343-.493.056-.995.27-3.13-.578-2.724-1.082-4.49-3.842-4.626-4.02-.136-.18-1.096-1.455-1.096-2.775 0-1.32.693-1.966.943-2.228.25-.262.545-.328.727-.328.182 0 .364.002.523.01.168.008.393-.063.614.47.228.55.773 1.884.84 2.018.069.135.114.293.023.473-.09.18-.136.293-.273.45-.136.16-.285.358-.409.48-.136.136-.28.285-.12.56.16.273.708 1.168 1.522 1.89.16.14.3.26.45.33.15.07.29.08.4.06.11-.02.36-.145.45-.33.1-.18.23-.42.34-.63.11-.21.23-.18.39-.12.16.06 1.046.49 1.228.58.18.09.3.135.34.208.046.073.046.42-.204 1.123z" />
+                      </svg>
+                      <span>Send WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Modal actions */}

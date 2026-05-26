@@ -1,4 +1,5 @@
 import Message from "../models/Message.js";
+import { sendAdminMessageNotification } from "../services/mailService.js";
 
 /**
  * @desc    Submit a contact inquiry message
@@ -13,6 +14,11 @@ export const submitMessage = async (req, res, next) => {
       name,
       email,
       message,
+    });
+
+    // Notify admin email asynchronously
+    sendAdminMessageNotification(savedMessage).catch((err) => {
+      console.error("✉️ Failed to send admin message notification:", err.message);
     });
 
     res.status(201).json({

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
-import { sendBookingConfirmation } from "../services/mailService.js";
+import { sendBookingConfirmation, sendAdminAppointmentNotification } from "../services/mailService.js";
 
 /**
  * @desc    Create a new appointment
@@ -40,6 +40,11 @@ export const createAppointment = async (req, res, next) => {
       service: appointment.service,
     }).catch((err) => {
       console.error("✉️ Failed to send email confirmation for appointment:", err.message);
+    });
+
+    // Send admin notification email
+    sendAdminAppointmentNotification(appointment).catch((err) => {
+      console.error("✉️ Failed to send admin notification for appointment:", err.message);
     });
 
     res.status(201).json({
