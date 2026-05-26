@@ -48,6 +48,12 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for rapid message filtering
+messageSchema.index({ createdAt: -1 });
+messageSchema.index({ isRead: 1 });
+messageSchema.index({ isStarred: 1 });
+messageSchema.index({ isArchived: 1 });
+
 const Message = mongoose.model("Message", messageSchema);
 
 export default Message;

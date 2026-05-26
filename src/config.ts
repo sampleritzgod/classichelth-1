@@ -5,14 +5,8 @@
 // Resolved backend API URL
 // In production, Vercel will inject process.env.NEXT_PUBLIC_API_URL.
 // In local development, it will fall back to localhost:5005.
-const isLocalhost =
-  typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1");
-
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (isLocalhost ? "http://localhost:5005" : "https://u-1st-creation.onrender.com");
+  process.env.NEXT_PUBLIC_API_URL || "https://u-1st-creation.onrender.com";
 
 // API endpoints
 export const API_ENDPOINTS = {
@@ -30,9 +24,8 @@ export const API_ENDPOINTS = {
   login: `${API_URL}/api/v1/auth/login`,
   logout: `${API_URL}/api/v1/auth/logout`,
   authMe: `${API_URL}/api/v1/auth/me`,
-  forgotPassword: `${API_URL}/api/v1/auth/forgot-password`,
-  resetPassword: `${API_URL}/api/v1/auth/reset-password`,
-  googleLogin: `${API_URL}/api/v1/auth/google`,
-  facebookLogin: `${API_URL}/api/v1/auth/facebook`,
+  profile: `${API_URL}/api/v1/auth/profile`,
+  createOrder: `${API_URL}/api/v1/payments/create-order`,
+  verifyPayment: `${API_URL}/api/v1/payments/verify`,
 };
 

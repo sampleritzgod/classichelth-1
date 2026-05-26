@@ -22,6 +22,7 @@ import {
   deleteBlog,
 } from "../controllers/blogController.js";
 import { protect, restrictTo } from "../middleware/authMiddleware.js";
+import { validateBlog } from "../middleware/validateBlog.js";
 
 const router = express.Router();
 
@@ -59,11 +60,11 @@ router.post("/messages/:id/reply", replyToMessage);
 // Blog management endpoints
 router.route("/blogs")
   .get(getAdminBlogs)
-  .post(createBlog);
+  .post(validateBlog, createBlog);
 
 router.route("/blogs/:id")
   .get(getAdminBlogById)
-  .put(updateBlog)
+  .put(validateBlog, updateBlog)
   .delete(deleteBlog);
 
 export default router;

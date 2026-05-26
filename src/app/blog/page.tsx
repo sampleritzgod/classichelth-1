@@ -18,6 +18,31 @@ interface BlogItem {
   publishedAt: string;
 }
 
+const IMAGE_FALLBACK = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23faf9f5"/><text x="50" y="50" font-family="serif" font-size="8" fill="%238a9a86" text-anchor="middle" dominant-baseline="middle">Classic Health</text></svg>';
+
+interface SafeImageProps extends Omit<React.ComponentProps<typeof Image>, "src"> {
+  src: string;
+}
+
+function SafeImage({ src, alt, ...props }: SafeImageProps) {
+  const [imgSrc, setImgSrc] = useState(src);
+  
+  useEffect(() => {
+    setImgSrc(src);
+  }, [src]);
+
+  return (
+    <Image
+      {...props}
+      src={imgSrc || IMAGE_FALLBACK}
+      alt={alt || "Blog image"}
+      onError={() => {
+        setImgSrc(IMAGE_FALLBACK);
+      }}
+    />
+  );
+}
+
 export default function BlogListPage() {
   const [blogs, setBlogs] = useState<BlogItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +85,10 @@ export default function BlogListPage() {
   useEffect(() => {
     fetchBlogs();
   }, [fetchBlogs]);
+
+  useEffect(() => {
+    document.title = "Journal & Insights | Classic Health";
+  }, []);
 
   // Client-side search filtering
   const filteredBlogs = blogs.filter((blog) =>
@@ -163,7 +192,7 @@ export default function BlogListPage() {
                 <article key={blog._id} className="flex flex-col group animate-fade-up">
                   {/* Blog Image */}
                   <Link href={`/blog/${blog.slug}`} className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden mb-6 border border-foreground/5 shadow-sm block hover:shadow-md transition-all">
-                    <Image
+                    <SafeImage
                       src={blog.image}
                       alt={blog.title}
                       fill

@@ -4,22 +4,21 @@ import {
   login,
   logout,
   getMe,
-  forgotPassword,
-  resetPassword,
-  googleLogin,
-  facebookLogin,
+  updateProfile,
 } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import {
+  validateSignup,
+  validateLogin,
+  validateProfileUpdate,
+} from "../middleware/validateAuth.js";
 
 const router = express.Router();
 
-router.post("/signup", signup);
-router.post("/login", login);
+router.post("/signup", validateSignup, signup);
+router.post("/login", validateLogin, login);
 router.post("/logout", logout);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password/:token", resetPassword);
-router.post("/google", googleLogin);
-router.post("/facebook", facebookLogin);
 router.get("/me", protect, getMe);
+router.put("/profile", protect, validateProfileUpdate, updateProfile);
 
 export default router;

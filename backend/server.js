@@ -11,6 +11,7 @@ import productRoutes from "./routes/productRoutes.js";
 import messageRoutes from "./routes/messageRoutes.js";
 import blogRoutes from "./routes/blogRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
@@ -45,12 +46,14 @@ app.use(
       // Allow requests with no origin (like mobile apps, postman, or curl)
       if (!origin) return callback(null, true);
       
-      // Check if the origin matches any of our allowed domains or Vercel preview subdomains
+      const isProd = process.env.NODE_ENV === "production";
+      
+      // Check if the origin matches any of our allowed domains
       const isAllowed = allowedOrigins.some((allowedOpt) => {
         const cleanAllowed = allowedOpt.trim().replace(/\/$/, "");
         const cleanOrigin = origin.trim().replace(/\/$/, "");
         return cleanAllowed === cleanOrigin;
-      }) || (origin.endsWith(".vercel.app") && origin.includes("your-first-creation")) || origin.includes("localhost");
+      }) || (!isProd && (origin.includes("localhost") || origin.includes("127.0.0.1")));
 
       if (isAllowed) {
         return callback(null, true);
@@ -86,6 +89,22 @@ const authLimiter = rateLimit({
 app.use("/api/v1/auth/login", authLimiter);
 app.use("/api/v1/auth/signup", authLimiter);
 
+// Rate limiting for contact form and payment creation to prevent script abuse
+const formAndPaymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Limit each IP to 30 requests per windowMs
+  message: {
+    success: false,
+    message: "Too many requests from this IP, please try again after 15 minutes",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use("/api/v1/messages", formAndPaymentLimiter);
+app.use("/api/v1/payments/create-order", formAndPaymentLimiter);
+app.use("/api/v1/payments/verify", formAndPaymentLimiter);
+
 // Welcome page / Root Endpoint
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -103,6 +122,7 @@ app.use("/api/v1", productRoutes);
 app.use("/api/v1", messageRoutes);
 app.use("/api/v1", blogRoutes);
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/payments", paymentRoutes);
 
 // Error Handling Middlewares
 app.use(notFound);
@@ -114,6 +134,14 @@ const server = app.listen(PORT, () => {
   console.log(
     `[Server] Running in ${process.env.NODE_ENV || "development"} mode on http://localhost:${PORT}`
   );
+});
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (err) => {
+  console.error(`[Server Error] Uncaught Exception: ${err.message}`);
+  console.error(err.stack);
+  // Exit process
+  process.exit(1);
 });
 
 // Handle unhandled promise rejections

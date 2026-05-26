@@ -56,6 +56,10 @@ const appointmentSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for rapid sorting and filtering in the admin panel
+appointmentSchema.index({ date: 1 });
+appointmentSchema.index({ status: 1 });
+
 const Appointment = mongoose.model("Appointment", appointmentSchema);
 
 export default Appointment;

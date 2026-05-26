@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import { getWhatsAppUrl, openWhatsApp } from "@/utils/whatsapp";
 import { useAuth } from "@/context/AuthContext";
 import AuthModals from "@/components/AuthModals";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { API_ENDPOINTS } from "@/config";
 
 interface CartItem {
   id: number;
@@ -14,19 +17,21 @@ interface CartItem {
 }
 
 export default function Navbar() {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<"login" | "signup">("login");
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+
   const [isOpen, setIsOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   
   const [cartCount, setCartCount] = useState(0);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  // Authentication states from Context
-  const { user, logout } = useAuth();
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<"login" | "signup" | "forgot">("login");
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-
-
+  const getLink = (hash: string) => {
+    return pathname === "/" ? hash : `/${hash}`;
+  };
 
   // Sync cart state with localStorage and handle custom events
   useEffect(() => {
@@ -88,20 +93,136 @@ export default function Navbar() {
 
   // handleLoginSubmit replaced with Context auth
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const cartTotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!user) {
       setIsCartOpen(false);
       window.dispatchEvent(new CustomEvent("open_auth_modal", { detail: { mode: "login" } }));
       return;
     }
-    let orderMsg = "Hello! I would like to order the following products from your website:\n\n";
-    cartItems.forEach((item) => {
-      orderMsg += `• ${item.quantity}x ${item.name} (₹${(item.price * item.quantity).toLocaleString()})\n`;
-    });
-    orderMsg += `\n*Total Amount: ₹${cartTotal.toLocaleString()}*\n\nPlease confirm my order. Thank you!`;
-    openWhatsApp(orderMsg);
+
+    if (cartItems.length === 0) {
+      alert("Your cart is empty.");
+      return;
+    }
+
+    try {
+      // 1. Create order on the backend
+      const orderResponse = await fetch(API_ENDPOINTS.createOrder, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: cartTotal,
+          type: "product",
+        }),
+        credentials: "include",
+      });
+
+      const orderJson = await orderResponse.json();
+
+      if (!orderResponse.ok || !orderJson.success) {
+        throw new Error(orderJson.message || "Failed to initiate payment. Please try again.");
+      }
+
+      const { order, keyId, mock } = orderJson;
+
+      // 2. Load Razorpay script
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error("Failed to load Razorpay Payment Gateway SDK.");
+      }
+
+      // 3. Configure Razorpay options
+      const options = {
+        key: keyId,
+        amount: order.amount,
+        currency: order.currency,
+        name: "U 1st Creation",
+        description: `Purchase of ${cartItems.length} item(s)`,
+        order_id: order.id,
+        prefill: {
+          name: user.name,
+          email: user.email,
+        },
+        theme: {
+          color: "#1e3f20", // Custom dark-green minimalist theme
+        },
+        handler: async (response: any) => {
+          try {
+            // Send signature verification to backend
+            const verifyResponse = await fetch(API_ENDPOINTS.verifyPayment, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id || order.id,
+                razorpay_payment_id: response.razorpay_payment_id || `mock_pay_${Date.now()}`,
+                razorpay_signature: response.razorpay_signature || "mock_sig",
+                type: "product",
+                amount: cartTotal,
+                cartItems: cartItems,
+              }),
+              credentials: "include",
+            });
+
+            const verifyJson = await verifyResponse.json();
+
+            if (verifyResponse.ok && verifyJson.success) {
+              // Clear cart
+              localStorage.removeItem("u1st_cart");
+              window.dispatchEvent(new Event("u1st_cart_change"));
+              setIsCartOpen(false);
+              alert("Payment successful! Your order has been placed successfully.");
+            } else {
+              throw new Error(verifyJson.message || "Payment verification failed.");
+            }
+          } catch (err: any) {
+            alert(err.message || "Failed to verify transaction. Please contact support.");
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            alert("Payment checkout cancelled by user.");
+          },
+        },
+      };
+
+      // Mock Mode Fallback Simulation
+      if (mock) {
+        console.log("[MOCK] Simulating Razorpay checkout flow...");
+        setTimeout(() => {
+          options.handler({
+            razorpay_order_id: order.id,
+            razorpay_payment_id: `mock_pay_${Date.now()}`,
+            razorpay_signature: "mock_sig",
+          });
+        }, 1500);
+      } else {
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      }
+    } catch (err: any) {
+      console.error("Checkout Error:", err);
+      alert(err.message || "Something went wrong during checkout. Please try again.");
+    }
   };
 
   return (
@@ -111,7 +232,7 @@ export default function Navbar() {
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <div className="flex-shrink-0">
-              <a href="#" className="flex items-center gap-x-3 font-serif text-xl sm:text-2xl font-bold tracking-tight text-primary">
+              <Link href={pathname === "/" ? "#" : "/"} className="flex items-center gap-x-3 font-serif text-xl sm:text-2xl font-bold tracking-tight text-primary">
                 {/* Official Shield + Plus + Leaf SVG */}
                 <div className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-white flex items-center justify-center border border-foreground/5">
                   <img 
@@ -123,20 +244,20 @@ export default function Navbar() {
                 <span className="font-sans font-bold tracking-tight text-[#1e3f20]">
                   U <span className="text-[#4caf50]">1st</span> Creation
                 </span>
-              </a>
+              </Link>
             </div>
 
             {/* Desktop Nav Links */}
             <div className="hidden lg:flex lg:items-center lg:gap-x-6">
-              <a href="#" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Home</a>
-              <a href="#services" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Services</a>
-              <a href="#about" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">About Us</a>
-              <a href="#blog" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Blog</a>
-              <a href="#shop" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Shop</a>
+              <Link href={pathname === "/" ? "#" : "/"} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Home</Link>
+              <Link href={getLink("#services")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Services</Link>
+              <Link href={getLink("#about")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">About Us</Link>
+              <Link href={getLink("#blog")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Blog</Link>
+              <Link href={getLink("#shop")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Shop</Link>
               
 
 
-              <a href="#booking" className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Book Online</a>
+              <Link href={getLink("#booking")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Book Online</Link>
             </div>
 
             {/* Right actions */}
@@ -148,18 +269,10 @@ export default function Navbar() {
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="flex items-center gap-x-2 text-sm font-medium text-foreground/90 hover:text-primary transition-all duration-300 cursor-pointer"
                   >
-                    {user.profileImage ? (
-                      <img
-                        src={user.profileImage}
-                        alt={user.fullName}
-                        className="h-7 w-7 rounded-full object-cover border border-[#1e3f20]/10"
-                      />
-                    ) : (
-                      <span className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                        {user.fullName.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                    <span className="hidden sm:inline-block max-w-[120px] truncate">{user.fullName.split(" ")[0]}</span>
+                    <span className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="hidden sm:inline-block max-w-[120px] truncate">{user.name.split(" ")[0]}</span>
                     <svg className={`h-4 w-4 text-foreground/50 transition-transform duration-300 ${userDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
@@ -168,17 +281,17 @@ export default function Navbar() {
                   {userDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl bg-[#faf9f5] border border-foreground/5 shadow-2xl p-2 z-50 animate-fade-up">
                       <div className="px-4 py-2 border-b border-foreground/5 mb-1 text-left">
-                        <p className="text-xs font-bold text-foreground truncate">{user.fullName}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{user.name}</p>
                         <p className="text-[10px] text-foreground/50 truncate font-medium">{user.email}</p>
                       </div>
                       
-                      <a
-                        href="#booking"
+                      <Link
+                        href="/profile"
                         onClick={() => setUserDropdownOpen(false)}
                         className="block text-left px-4 py-2 rounded-xl text-xs font-semibold text-foreground/80 hover:bg-foreground/5 hover:text-primary transition-all"
                       >
-                        My Appointments
-                      </a>
+                        My Profile
+                      </Link>
 
                       {(user.role === "admin" || user.role === "superadmin") && (
                         <a
@@ -285,33 +398,33 @@ export default function Navbar() {
         {isOpen && (
           <div className="lg:hidden border-t border-foreground/5 bg-background animate-fade-up" id="mobile-menu">
             <div className="space-y-1 px-4 py-4 sm:px-6">
-              <a href="#" onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Home</a>
-              <a href="#services" onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Services</a>
-              <a href="#about" onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">About Us</a>
-              <a href="#blog" onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Blog</a>
-              <a href="#shop" onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Shop</a>
-              <a href="#booking" onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Book Online</a>
+              <Link href={pathname === "/" ? "#" : "/"} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Home</Link>
+              <Link href={getLink("#services")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Services</Link>
+              <Link href={getLink("#about")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">About Us</Link>
+              <Link href={getLink("#blog")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Blog</Link>
+              <Link href={getLink("#shop")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Shop</Link>
+              <Link href={getLink("#booking")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Book Online</Link>
               
               <div className="mt-6 flex flex-col gap-y-3 px-3">
                 {user ? (
                   <>
                     <div className="flex items-center gap-x-3 px-3 py-2 border-b border-foreground/5 text-left">
-                      {user.profileImage ? (
-                        <img
-                          src={user.profileImage}
-                          alt={user.fullName}
-                          className="h-8 w-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <span className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                          {user.fullName.charAt(0).toUpperCase()}
-                        </span>
-                      )}
+                      <span className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                        {user.name.charAt(0).toUpperCase()}
+                      </span>
                       <div>
-                        <p className="text-xs font-bold text-foreground">{user.fullName}</p>
+                        <p className="text-xs font-bold text-foreground">{user.name}</p>
                         <p className="text-[10px] text-foreground/50 font-medium">{user.email}</p>
                       </div>
                     </div>
+                    
+                    <Link
+                      href="/profile"
+                      onClick={() => setIsOpen(false)}
+                      className="flex w-full items-center justify-center rounded-full border border-foreground/20 py-2.5 text-sm font-semibold text-foreground/80 hover:bg-foreground/5"
+                    >
+                      My Profile
+                    </Link>
                     
                     {(user.role === "admin" || user.role === "superadmin") && (
                       <a
@@ -466,7 +579,7 @@ export default function Navbar() {
                       onClick={handleCheckout}
                       className="w-full rounded-full bg-primary py-3 text-sm font-semibold text-white hover:bg-primary-hover transition-colors"
                     >
-                      Checkout on WhatsApp
+                      Checkout & Pay Now
                     </button>
                   </div>
                 )}

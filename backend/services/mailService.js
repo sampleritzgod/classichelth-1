@@ -8,6 +8,7 @@ const SMTP_PASS = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 587;
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || "u1stcreation1993@gmail.com";
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://your-first-creation.vercel.app";
 
 // Validate SMTP config. If not configured, print warnings and run in mock mode
 const isMailConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
@@ -193,7 +194,7 @@ export const sendInquiryReply = async (email, name, originalMessage, replyText) 
     
     <p>If you have any further questions or would like to schedule a personal consultation, please let us know or click below to visit our online portal.</p>
     <div style="text-align: center;">
-      <a href="https://your-first-creation.vercel.app" class="btn">Visit U 1st Creation</a>
+      <a href="${FRONTEND_URL}" class="btn">Visit U 1st Creation</a>
     </div>
     `
   );
@@ -391,7 +392,7 @@ export const sendAdminAppointmentNotification = async (appointment) => {
       "${appointment.message || "No booking message left by the client."}"
     </div>
     <div style="text-align: center; margin-top: 20px;">
-      <a href="https://your-first-creation.vercel.app/admin/appointments" class="btn">Manage in Admin Board</a>
+      <a href="${FRONTEND_URL}/admin/appointments" class="btn">Manage in Admin Board</a>
     </div>
     `
   );
@@ -436,7 +437,7 @@ export const sendAdminMessageNotification = async (message) => {
       "${message.message}"
     </div>
     <div style="text-align: center; margin-top: 20px;">
-      <a href="https://your-first-creation.vercel.app/admin/messages" class="btn">View & Reply in Inbox</a>
+      <a href="${FRONTEND_URL}/admin/messages" class="btn">View & Reply in Inbox</a>
     </div>
     `
   );
@@ -472,5 +473,125 @@ export const sendPasswordResetEmail = async (email, name, resetUrl) => {
   );
 
   return sendMail({ to: email, subject, html, text });
+};
+
+/**
+ * Send Product Order Confirmation Email to Customer
+ */
+export const sendProductOrderConfirmation = async (email, name, order) => {
+  const subject = `Your Order at U 1st Creation is Confirmed`;
+  const itemsListHtml = order.items
+    .map(
+      (item) =>
+        `<tr>
+          <td style="padding: 8px 0; color: #1c3325;">${item.name} x ${item.quantity}</td>
+          <td style="padding: 8px 0; text-align: right; color: #1c3325;">₹${(
+            item.price * item.quantity
+          ).toLocaleString()}</td>
+        </tr>`
+    )
+    .join("");
+
+  const text = `Hello ${name},\n\nYour order has been successfully placed.\n\nOrder Total: ₹${order.totalAmount.toLocaleString()}\nPayment ID: ${order.paymentId}\n\nThank you for choosing U 1st Creation.`;
+
+  const html = getHtmlTemplate(
+    "Order Confirmation",
+    `
+    <p>Dear ${name},</p>
+    <p>Thank you for shopping at U 1st Creation. Your payment was verified, and your order has been successfully registered.</p>
+    
+    <div style="background-color: #fbfaf7; border: 1px solid #e9e6df; padding: 24px; border-radius: 12px; margin: 24px 0;">
+      <h3 style="font-family: Georgia, serif; color: #1c3325; margin-top: 0;">Order Summary</h3>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid #e9e6df;">
+            <th style="text-align: left; padding-bottom: 8px; color: #6e7a70; font-size: 12px; text-transform: uppercase;">Item</th>
+            <th style="text-align: right; padding-bottom: 8px; color: #6e7a70; font-size: 12px; text-transform: uppercase;">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsListHtml}
+          <tr style="border-t: 1px solid #e9e6df;">
+            <td style="padding: 12px 0 0; font-weight: bold; color: #1c3325;">Total Paid:</td>
+            <td style="padding: 12px 0 0; text-align: right; font-weight: bold; color: #1c3325; font-size: 16px;">₹${order.totalAmount.toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top: 16px; font-size: 11px; color: #6e7a70;">
+        Payment ID: ${order.paymentId}
+      </div>
+    </div>
+    
+    <p>Our wellness team is preparing your package. You will receive tracking details once the order has been dispatched.</p>
+    `
+  );
+
+  return sendMail({ to: email, subject, html, text });
+};
+
+/**
+ * Send Admin Product Order Notification Email
+ */
+export const sendAdminProductOrderNotification = async (order, customerName, customerEmail) => {
+  const adminEmail = process.env.SMTP_EMAIL || "u1stcreation1993@gmail.com";
+  const subject = `[New Sale] Order from ${customerName}`;
+  const itemsListHtml = order.items
+    .map(
+      (item) =>
+        `<tr>
+          <td style="padding: 8px 0; color: #1c3325;">${item.name} x ${item.quantity}</td>
+          <td style="padding: 8px 0; text-align: right; color: #1c3325;">₹${(
+            item.price * item.quantity
+          ).toLocaleString()}</td>
+        </tr>`
+    )
+    .join("");
+
+  const text = `New Product Order Alert:\n\nCustomer: ${customerName} (${customerEmail})\nTotal: ₹${order.totalAmount.toLocaleString()}\nPayment ID: ${order.paymentId}\nItems:\n` +
+    order.items.map((i) => ` - ${i.name} x ${i.quantity}`).join("\n");
+
+  const html = getHtmlTemplate(
+    "New Order Notification",
+    `
+    <p>Dear Administrator,</p>
+    <p>A new order has been completed and verified. Below are the order details:</p>
+    
+    <div style="background-color: #fbfaf7; border: 1px solid #e9e6df; padding: 24px; border-radius: 12px; margin: 24px 0;">
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+        <tr>
+          <td style="padding: 4px 0; font-weight: 600; color: #6e7a70; width: 35%;">Customer:</td>
+          <td style="padding: 4px 0; color: #1c3325;">${customerName} (${customerEmail})</td>
+        </tr>
+        <tr>
+          <td style="padding: 4px 0; font-weight: 600; color: #6e7a70;">Payment ID:</td>
+          <td style="padding: 4px 0; color: #1c3325; font-family: monospace;">${order.paymentId}</td>
+        </tr>
+      </table>
+      
+      <h4 style="font-family: Georgia, serif; color: #1c3325; margin-top: 24px; margin-bottom: 8px;">Items Ordered</h4>
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 1px solid #e9e6df;">
+            <th style="text-align: left; padding-bottom: 8px; color: #6e7a70; font-size: 11px; text-transform: uppercase;">Product</th>
+            <th style="text-align: right; padding-bottom: 8px; color: #6e7a70; font-size: 11px; text-transform: uppercase;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsListHtml}
+          <tr style="border-t: 1px solid #e9e6df;">
+            <td style="padding: 12px 0 0; font-weight: bold; color: #1c3325;">Total Revenue:</td>
+            <td style="padding: 12px 0 0; text-align: right; font-weight: bold; color: #1c3325; font-size: 16px;">₹${order.totalAmount.toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+      <a href="${FRONTEND_URL}/admin/dashboard" class="btn">Go to Admin Dashboard</a>
+    </div>
+    `
+  );
+
+  return sendMail({ to: adminEmail, subject, html, text });
 };
 

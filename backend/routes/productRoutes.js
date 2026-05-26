@@ -7,6 +7,7 @@ import {
   deleteProduct,
 } from "../controllers/productController.js";
 import { protect, restrictTo } from "../middleware/authMiddleware.js";
+import { validateProduct } from "../middleware/validateProduct.js";
 
 const router = express.Router();
 
@@ -15,8 +16,8 @@ router.get("/products", getProducts);
 router.get("/products/:id", getProductById);
 
 // Admin-only product modification routes
-router.post("/products", protect, restrictTo("admin"), createProduct);
-router.put("/products/:id", protect, restrictTo("admin"), updateProduct);
+router.post("/products", protect, restrictTo("admin"), validateProduct, createProduct);
+router.put("/products/:id", protect, restrictTo("admin"), validateProduct, updateProduct);
 router.delete("/products/:id", protect, restrictTo("admin"), deleteProduct);
 
 export default router;

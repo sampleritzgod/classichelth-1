@@ -351,8 +351,17 @@ export default function AdminProducts() {
 
       {/* Products catalog list grid */}
       {loading && products.length === 0 ? (
-        <div className="text-center py-20 animate-pulse font-serif text-foreground/50">
-          Syncing product catalog...
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 animate-pulse">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-foreground/5 overflow-hidden shadow-xs h-96 flex flex-col justify-between p-4 animate-pulse">
+              <div className="w-full aspect-square bg-foreground/5 rounded-xl mb-4 animate-pulse" />
+              <div className="space-y-2 flex-grow">
+                <div className="h-4 bg-foreground/10 rounded w-3/4" />
+                <div className="h-3 bg-foreground/5 rounded w-1/2" />
+              </div>
+              <div className="h-8 bg-foreground/10 rounded-full w-full mt-4" />
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className="p-12 text-center text-red-600 font-semibold">{error}</div>

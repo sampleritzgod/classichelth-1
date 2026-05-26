@@ -12,6 +12,7 @@ interface Service {
   duration: string;
   image: string;
   category: string;
+  price: number;
 }
 
 export default function Booking() {
@@ -23,6 +24,7 @@ export default function Booking() {
       duration: "45 mins",
       image: "/images/service_consultation.png",
       category: "Our Services",
+      price: 500,
     },
     {
       id: "nadi-parikshan",
@@ -31,6 +33,7 @@ export default function Booking() {
       duration: "30 mins",
       image: "/images/service_massage.png",
       category: "Our Services",
+      price: 350,
     },
     {
       id: "doorstep-checkup",
@@ -39,6 +42,7 @@ export default function Booking() {
       duration: "30 mins",
       image: "/images/blog_nutrition.png",
       category: "Wellness & Management",
+      price: 600,
     },
     {
       id: "diabetes-care",
@@ -47,6 +51,7 @@ export default function Booking() {
       duration: "1 hr",
       image: "/images/u1st_service_diabetes.png",
       category: "Chronic Care",
+      price: 1200,
     },
     {
       id: "thyroid-care",
@@ -55,6 +60,7 @@ export default function Booking() {
       duration: "1 hr",
       image: "/images/u1st_service_thyroid.png",
       category: "Chronic Care",
+      price: 1200,
     },
     {
       id: "weight-management",
@@ -63,6 +69,7 @@ export default function Booking() {
       duration: "1 hr",
       image: "/images/u1st_service_obesity.png",
       category: "Wellness & Management",
+      price: 1500,
     },
   ];
 
@@ -84,13 +91,11 @@ export default function Booking() {
   // Prefill details when user logs in
   useEffect(() => {
     if (user) {
-      setBookingName(user.fullName || "");
+      setBookingName(user.name || "");
       setBookingEmail(user.email || "");
-      setBookingPhone(user.phone || "");
     } else {
       setBookingName("");
       setBookingEmail("");
-      setBookingPhone("");
     }
   }, [user]);
 
@@ -109,56 +114,156 @@ export default function Booking() {
     setBookingError(null);
   };
 
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handleBookingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      // Force user to log in before booking
+      window.dispatchEvent(new CustomEvent("open_auth_modal", { detail: { mode: "login" } }));
+      return;
+    }
+
     if (bookingDate && bookingTime && selectedService && bookingName && bookingEmail && bookingPhone) {
       try {
         setIsSubmitting(true);
         setBookingError(null);
 
-        const response = await fetch(API_ENDPOINTS.appointments, {
+        // 1. Create order on the backend
+        const orderResponse = await fetch(API_ENDPOINTS.createOrder, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            name: bookingName,
-            email: bookingEmail,
-            phone: bookingPhone,
-            date: bookingDate,
-            timeSlot: bookingTime,
-            condition: selectedService.name,
-            message: bookingMessage,
+            amount: selectedService.price,
+            type: "appointment",
           }),
+          credentials: "include",
         });
 
-        const data = await response.json();
+        const orderJson = await orderResponse.json();
 
-        if (response.ok && data.success) {
-          setBookingSuccess(true);
-          // Clear inputs
-          setBookingName("");
-          setBookingEmail("");
-          setBookingPhone("");
-          setBookingDate("");
-          setBookingTime("");
-          setBookingMessage("");
-          
-          // Close modal after delay
+        if (!orderResponse.ok || !orderJson.success) {
+          throw new Error(orderJson.message || "Failed to initiate payment order.");
+        }
+
+        const { order, keyId, mock } = orderJson;
+
+        // 2. Load Razorpay script
+        const isLoaded = await loadRazorpayScript();
+        if (!isLoaded) {
+          throw new Error("Failed to load Razorpay Payment Gateway SDK.");
+        }
+
+        // 3. Configure checkout modal options
+        const options = {
+          key: keyId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "U 1st Creation",
+          description: `Appointment: ${selectedService.name}`,
+          order_id: order.id,
+          prefill: {
+            name: bookingName,
+            email: bookingEmail,
+            contact: bookingPhone,
+          },
+          theme: {
+            color: "#1e3f20", // Custom dark-green minimalist theme
+          },
+          handler: async (response: any) => {
+            try {
+              setIsSubmitting(true);
+              // Send signature verification to backend
+              const verifyResponse = await fetch(API_ENDPOINTS.verifyPayment, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id || order.id,
+                  razorpay_payment_id: response.razorpay_payment_id || `mock_pay_${Date.now()}`,
+                  razorpay_signature: response.razorpay_signature || "mock_sig",
+                  type: "appointment",
+                  amount: selectedService.price,
+                  appointmentDetails: {
+                    name: bookingName,
+                    email: bookingEmail,
+                    phone: bookingPhone,
+                    date: bookingDate,
+                    timeSlot: bookingTime,
+                    condition: selectedService.name,
+                    message: bookingMessage,
+                    service: selectedService.name,
+                  },
+                }),
+                credentials: "include",
+              });
+
+              const verifyJson = await verifyResponse.json();
+
+              if (verifyResponse.ok && verifyJson.success) {
+                setBookingSuccess(true);
+                // Clear fields
+                setBookingName("");
+                setBookingEmail("");
+                setBookingPhone("");
+                setBookingDate("");
+                setBookingTime("");
+                setBookingMessage("");
+
+                setTimeout(() => {
+                  setSelectedService(null);
+                  setBookingSuccess(false);
+                }, 4000);
+              } else {
+                throw new Error(verifyJson.message || "Payment verification failed.");
+              }
+            } catch (err: any) {
+              setBookingError(err.message || "Failed to verify transaction. Please contact support.");
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              setIsSubmitting(false);
+              setBookingError("Payment checkout cancelled by user.");
+            },
+          },
+        };
+
+        // If mock checkout is active, simulate client handler automatically
+        if (mock) {
+          console.log("[MOCK] Simulating Razorpay checkout flow...");
           setTimeout(() => {
-            setSelectedService(null);
-            setBookingSuccess(false);
-          }, 3000);
+            options.handler({
+              razorpay_order_id: order.id,
+              razorpay_payment_id: `mock_pay_${Date.now()}`,
+              razorpay_signature: "mock_sig",
+            });
+          }, 1500);
         } else {
-          const errorMsg = data.errors 
-            ? Object.values(data.errors).join(", ") 
-            : data.message || "Failed to book appointment";
-          throw new Error(errorMsg);
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
         }
       } catch (err: any) {
         console.error("Booking Error:", err);
         setBookingError(err.message || "Something went wrong. Please try again.");
-      } finally {
         setIsSubmitting(false);
       }
     }
@@ -280,7 +385,7 @@ export default function Booking() {
             ) : (
               <>
                 <h3 className="font-serif text-xl text-primary font-semibold mb-1">Schedule Appointment</h3>
-                <p className="text-xs text-foreground/60 mb-5">Select a date and time for <strong>{selectedService.name}</strong>.</p>
+                <p className="text-xs text-foreground/60 mb-5">Select a date and time for <strong>{selectedService.name}</strong> (Fee: <strong>₹{selectedService.price}</strong>).</p>
 
                 <form onSubmit={handleBookingSubmit} className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                   {bookingError && (
@@ -383,7 +488,7 @@ export default function Booking() {
                     disabled={isSubmitting}
                     className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover mt-2 cursor-pointer disabled:opacity-50"
                   >
-                    {isSubmitting ? "Holding Booking Slot..." : "Confirm Booking"}
+                    {isSubmitting ? "Processing Payment..." : `Pay ₹${selectedService.price} & Book`}
                   </button>
                 </form>
               </>

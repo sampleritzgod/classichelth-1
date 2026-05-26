@@ -3,27 +3,21 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { API_ENDPOINTS } from "@/config";
 
-interface User {
+export interface User {
   _id: string;
-  fullName: string;
+  name: string;
   email: string;
-  phone?: string;
-  provider: "local" | "google" | "facebook";
-  profileImage?: string;
   role: "user" | "admin" | "superadmin";
-  isVerified: boolean;
+  createdAt: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  signup: (fullName: string, email: string, password: string, phone?: string) => Promise<User>;
+  signup: (name: string, email: string, password: string) => Promise<User>;
   logout: () => Promise<void>;
-  loginWithGoogle: (idToken: string) => Promise<User>;
-  loginWithFacebook: (accessToken: string) => Promise<User>;
-  forgotPassword: (email: string) => Promise<void>;
-  resetPassword: (token: string, password: string) => Promise<User>;
+  updateProfile: (name: string, email: string) => Promise<User>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +63,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
+    const isLocalhost =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+
+    // Only restore session if not in an environment where we mock local storage logins
     fetchUser();
   }, []);
 
@@ -104,13 +104,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return json.data.user;
   };
 
-  const signup = async (fullName: string, email: string, password: string, phone?: string): Promise<User> => {
+  const signup = async (name: string, email: string, password: string): Promise<User> => {
     const response = await fetch(API_ENDPOINTS.signup, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ fullName, email, password, phone }),
+      body: JSON.stringify({ name, email, password }),
       credentials: "include",
     });
 
@@ -143,80 +143,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const loginWithGoogle = async (idToken: string): Promise<User> => {
-    const response = await fetch(API_ENDPOINTS.googleLogin, {
-      method: "POST",
+  const updateProfile = async (name: string, email: string): Promise<User> => {
+    const response = await fetch(API_ENDPOINTS.profile, {
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ idToken }),
+      body: JSON.stringify({ name, email }),
       credentials: "include",
     });
 
     const json = await response.json();
 
     if (!response.ok || !json.success) {
-      throw new Error(json.message || "Google authentication failed.");
+      throw new Error(json.message || "Failed to update profile.");
     }
 
-    syncAdminSession(json);
-    return json.data.user;
-  };
-
-  const loginWithFacebook = async (accessToken: string): Promise<User> => {
-    const response = await fetch(API_ENDPOINTS.facebookLogin, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ accessToken }),
-      credentials: "include",
-    });
-
-    const json = await response.json();
-
-    if (!response.ok || !json.success) {
-      throw new Error(json.message || "Facebook authentication failed.");
+    const updatedUser = json.data.user;
+    setUser(updatedUser);
+    
+    // Sync email to admin localStorage if role is admin
+    if (updatedUser.role === "admin" || updatedUser.role === "superadmin") {
+      localStorage.setItem("admin_email", updatedUser.email);
     }
 
-    syncAdminSession(json);
-    return json.data.user;
-  };
-
-  const forgotPassword = async (email: string): Promise<void> => {
-    const response = await fetch(API_ENDPOINTS.forgotPassword, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email }),
-    });
-
-    const json = await response.json();
-
-    if (!response.ok || !json.success) {
-      throw new Error(json.message || "Failed to send reset link.");
-    }
-  };
-
-  const resetPassword = async (token: string, password: string): Promise<User> => {
-    const response = await fetch(`${API_ENDPOINTS.resetPassword}/${token}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ password }),
-      credentials: "include",
-    });
-
-    const json = await response.json();
-
-    if (!response.ok || !json.success) {
-      throw new Error(json.message || "Failed to reset password.");
-    }
-
-    syncAdminSession(json);
-    return json.data.user;
+    return updatedUser;
   };
 
   return (
@@ -227,10 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         signup,
         logout,
-        loginWithGoogle,
-        loginWithFacebook,
-        forgotPassword,
-        resetPassword,
+        updateProfile,
       }}
     >
       {children}

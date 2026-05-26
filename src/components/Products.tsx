@@ -35,6 +35,31 @@ interface Product {
   isAvailable?: boolean;
 }
 
+const IMAGE_FALLBACK = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23faf9f5"/><text x="50" y="50" font-family="serif" font-size="8" fill="%238a9a86" text-anchor="middle" dominant-baseline="middle">Classic Health</text></svg>';
+
+interface SafeImageProps extends Omit<React.ComponentProps<typeof Image>, "src"> {
+  src: string;
+}
+
+function SafeImage({ src, alt, ...props }: SafeImageProps) {
+  const [imgSrc, setImgSrc] = useState(src);
+  
+  useEffect(() => {
+    setImgSrc(src);
+  }, [src]);
+
+  return (
+    <Image
+      {...props}
+      src={imgSrc || IMAGE_FALLBACK}
+      alt={alt || "Product image"}
+      onError={() => {
+        setImgSrc(IMAGE_FALLBACK);
+      }}
+    />
+  );
+}
+
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,27 +105,7 @@ export default function Products() {
     fetchProducts();
   }, []);
 
-  if (loading) {
-    return (
-      <section id="shop" className="py-16 sm:py-20 lg:py-24 border-t border-foreground/5 scroll-mt-20 bg-background animate-pulse">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center py-20">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mb-4" />
-          <p className="text-sm text-foreground/60 font-medium font-serif">Harmonizing wellness catalog...</p>
-        </div>
-      </section>
-    );
-  }
 
-  if (error) {
-    return (
-      <section id="shop" className="py-16 sm:py-20 lg:py-24 border-t border-foreground/5 scroll-mt-20 bg-background">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center py-20">
-          <p className="text-sm text-red-600 font-semibold mb-4">Error: {error}</p>
-          <p className="text-xs text-foreground/50">Please verify the server status or try again later.</p>
-        </div>
-      </section>
-    );
-  }
 
   const handleAddToCart = (product: Product, e?: React.MouseEvent) => {
     if (e) e.stopPropagation(); // Prevent opening detail modal
@@ -221,7 +226,25 @@ export default function Products() {
 
           {/* Right Column: Product Grid */}
           <main className="lg:col-span-9">
-            {filteredProducts.length === 0 ? (
+            {loading ? (
+              <div className="grid grid-cols-1 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 sm:gap-x-6 lg:gap-x-8">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="flex flex-col h-full bg-accent-soft/10 rounded-2xl p-4 border border-foreground/5 justify-between min-h-[380px] space-y-4 animate-pulse">
+                    <div className="relative w-full aspect-square bg-foreground/5 rounded-xl animate-pulse" />
+                    <div className="space-y-2 flex-grow">
+                      <div className="h-4 bg-foreground/10 rounded w-3/4" />
+                      <div className="h-3 bg-foreground/5 rounded w-1/2" />
+                    </div>
+                    <div className="h-10 bg-foreground/10 rounded-full w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-16 bg-red-50/50 rounded-3xl border border-dashed border-red-200">
+                <p className="text-sm text-red-600 font-semibold mb-2">Error: {error}</p>
+                <p className="text-xs text-foreground/50">Please verify the server status or try again later.</p>
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="text-center py-20 bg-accent-soft/10 rounded-3xl border border-dashed border-foreground/10">
                 <p className="text-sm text-foreground/60">No products match your active filters.</p>
               </div>
@@ -235,7 +258,7 @@ export default function Products() {
                   >
                     {/* Product Image */}
                     <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-5 border border-foreground/5 bg-foreground/[0.01]">
-                      <Image
+                      <SafeImage
                         src={product.image}
                         alt={product.alt}
                         fill
@@ -322,7 +345,7 @@ export default function Products() {
             {/* Left Side: Product Image & CTA */}
             <div className="md:col-span-5 flex flex-col items-center">
               <div className="relative w-full aspect-square rounded-2xl overflow-hidden border border-foreground/5 bg-foreground/[0.01] mb-6">
-                <Image src={detailProduct.image} alt={detailProduct.alt} fill className="object-cover" />
+                <SafeImage src={detailProduct.image} alt={detailProduct.alt} fill className="object-cover" />
                 {detailProduct.inStock === false && (
                   <div className="absolute inset-0 bg-white/60 backdrop-blur-xs flex items-center justify-center">
                     <span className="bg-red-600 text-white font-serif font-bold text-xs uppercase px-4 py-1.5 rounded-full tracking-widest shadow-md">

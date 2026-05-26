@@ -8,12 +8,6 @@ import { sendBookingConfirmation, sendAdminAppointmentNotification } from "../se
  * @access  Public
  */
 export const createAppointment = async (req, res, next) => {
-  console.log("[API] Incoming booking request body:", req.body);
-  console.log(
-    "[Database] MongoDB connection state:",
-    mongoose.connection.readyState === 1 ? "Connected (OK)" : "Disconnected (Error)"
-  );
-
   try {
     const { name, email, phone, date, timeSlot, condition, message, service } = req.body;
 
@@ -30,8 +24,6 @@ export const createAppointment = async (req, res, next) => {
     });
 
     await appointment.save();
-
-    console.log("[API] Appointment saved successfully to MongoDB:", appointment._id);
 
     // Send confirmation email asynchronously (do not block client response)
     sendBookingConfirmation(appointment.email, appointment.name, {
