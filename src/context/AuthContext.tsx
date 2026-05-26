@@ -23,10 +23,10 @@ if (typeof window !== "undefined") {
     if (isApi) {
       const newInit = { ...init };
       newInit.credentials = "include";
-      return originalFetch.call(this, input, newInit);
+      return originalFetch(input, newInit);
     }
     
-    return originalFetch.call(this, input, init);
+    return originalFetch(input, init);
   };
 }
 

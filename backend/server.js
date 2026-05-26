@@ -53,7 +53,7 @@ app.use(
         const cleanAllowed = allowedOpt.trim().replace(/\/$/, "");
         const cleanOrigin = origin.trim().replace(/\/$/, "");
         return cleanAllowed === cleanOrigin;
-      }) || (!isProd && (origin.includes("localhost") || origin.includes("127.0.0.1")));
+      }) || origin.includes("localhost") || origin.includes("127.0.0.1") || origin.includes("vercel.app");
 
       if (isAllowed) {
         return callback(null, true);
@@ -122,6 +122,7 @@ app.use("/api/v1", productRoutes);
 app.use("/api/v1", messageRoutes);
 app.use("/api/v1", blogRoutes);
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 
 // Error Handling Middlewares
