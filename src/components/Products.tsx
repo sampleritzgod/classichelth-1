@@ -36,6 +36,16 @@ export default function Products() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const categories = ["All", "Supplements", "Tonics & Syrups", "Wellness Oils"];
+
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [maxPrice, setMaxPrice] = useState(2000);
+  const [addedItems, setAddedItems] = useState<Record<string | number, boolean>>({});
+  
+  // Product Detail Modal State
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState<"ingredients" | "benefits" | "usage" | "faqs" | "testimonials">("ingredients");
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -87,16 +97,6 @@ export default function Products() {
       </section>
     );
   }
-
-  const categories = ["All", "Supplements", "Tonics & Syrups", "Wellness Oils"];
-
-  const [selectedCategory, setSelectedCategory] = useState("All");
-  const [maxPrice, setMaxPrice] = useState(2000);
-  const [addedItems, setAddedItems] = useState<Record<string | number, boolean>>({});
-  
-  // Product Detail Modal State
-  const [detailProduct, setDetailProduct] = useState<Product | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<"ingredients" | "benefits" | "usage" | "faqs" | "testimonials">("ingredients");
 
   const handleAddToCart = (product: Product, e?: React.MouseEvent) => {
     if (e) e.stopPropagation(); // Prevent opening detail modal
