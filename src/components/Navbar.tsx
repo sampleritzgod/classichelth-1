@@ -276,7 +276,7 @@ export default function Navbar() {
                     <span className="h-7 w-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
                       {(user?.name || "U").charAt(0).toUpperCase()}
                     </span>
-                    <span className="hidden sm:inline-block max-w-[120px] truncate">{user?.name ? user.name.split(" ")[0] : "User"}</span>
+                    <span className="hidden sm:inline-block max-w-[120px] truncate">{user?.name ? user?.name.split(" ")[0] : "User"}</span>
                     <svg className={`h-4 w-4 text-foreground/50 transition-transform duration-300 ${userDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>

@@ -21,8 +21,8 @@ export default function ProfilePage() {
   // Initialize edit fields when user is loaded
   useEffect(() => {
     if (user) {
-      setEditName(user.name || "");
-      setEditEmail(user.email || "");
+      setEditName(user?.name || "");
+      setEditEmail(user?.email || "");
     }
   }, [user]);
 
@@ -107,7 +107,7 @@ export default function ProfilePage() {
     }
   };
 
-  const formattedJoinedDate = user.createdAt
+  const formattedJoinedDate = user?.createdAt
     ? new Date(user.createdAt).toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",

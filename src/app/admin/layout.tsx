@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { API_ENDPOINTS } from "@/config";
+import { useAuth } from "@/context/AuthContext";
 
 interface NavItem {
   name: string;
@@ -18,6 +19,7 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [adminEmail, setAdminEmail] = useState("admin@example.com");
@@ -29,18 +31,11 @@ export default function AdminLayout({
     }
 
     const verifySession = async () => {
-      let token = localStorage.getItem("admin_token");
       const email = localStorage.getItem("admin_email");
       if (email) setAdminEmail(email);
 
       try {
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-
         const response = await fetch(API_ENDPOINTS.authMe, {
-          headers,
           credentials: "include", // Send cookie if present
         });
         const json = await response.json();
@@ -60,13 +55,15 @@ export default function AdminLayout({
             router.push("/");
           }
         } else {
-          // Token expired or invalid
-          localStorage.removeItem("admin_token");
+          // Session expired or invalid
+          localStorage.removeItem("admin_email");
+          localStorage.removeItem("admin_role");
           router.push("/admin/login");
         }
       } catch (err) {
         console.error("Auth verification failed:", err);
-        if (token) {
+        const adminRole = localStorage.getItem("admin_role");
+        if (adminRole === "admin" || adminRole === "superadmin") {
           // Fallback for development if server is temporarily down or offline
           setAuthLoading(false);
         } else {
@@ -78,10 +75,8 @@ export default function AdminLayout({
     verifySession();
   }, [pathname, router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("admin_token");
-    localStorage.removeItem("admin_email");
-    localStorage.removeItem("admin_role");
+  const handleLogout = async () => {
+    await logout();
     router.push("/admin/login");
   };
 

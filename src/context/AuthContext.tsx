@@ -3,6 +3,33 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { API_ENDPOINTS } from "@/config";
 
+// Globally intercept fetch to ensure credentials: "include" is always set for API requests.
+// This preserves the session cookie across refreshes and page transitions.
+if (typeof window !== "undefined") {
+  const originalFetch = window.fetch;
+  window.fetch = function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    let url = "";
+    if (typeof input === "string") {
+      url = input;
+    } else if (input instanceof URL) {
+      url = input.toString();
+    } else if (input && typeof input === "object" && "url" in input) {
+      url = (input as any).url || "";
+    }
+    
+    // Check if request is relative or targets our backend APIs
+    const isApi = !url.startsWith("http") || url.includes("/api/") || url.includes("onrender.com") || url.includes("localhost");
+    
+    if (isApi) {
+      const newInit = { ...init };
+      newInit.credentials = "include";
+      return originalFetch.call(this, input, newInit);
+    }
+    
+    return originalFetch.call(this, input, init);
+  };
+}
+
 export interface User {
   _id: string;
   name: string;
@@ -49,9 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (user?.role === "admin" || user?.role === "superadmin") {
             localStorage.setItem("admin_email", user?.email || "");
             localStorage.setItem("admin_role", user?.role || "");
-            if (json.token) {
-              localStorage.setItem("admin_token", json.token);
-            }
           }
         } else {
           setUser(null);
@@ -81,9 +105,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user?.role === "admin" || user?.role === "superadmin") {
       localStorage.setItem("admin_email", user?.email || "");
       localStorage.setItem("admin_role", user?.role || "");
-      if (data.token) {
-        localStorage.setItem("admin_token", data.token);
-      }
     }
   };
 
@@ -140,7 +161,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Logout request failed:", err);
     } finally {
       setUser(null);
-      localStorage.removeItem("admin_token");
       localStorage.removeItem("admin_email");
       localStorage.removeItem("admin_role");
     }

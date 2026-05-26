@@ -13,8 +13,8 @@ export default function AdminLogin() {
 
   // If already logged in, redirect directly to dashboard
   useEffect(() => {
-    const token = localStorage.getItem("admin_token");
-    if (token) {
+    const adminRole = localStorage.getItem("admin_role");
+    if (adminRole === "admin" || adminRole === "superadmin") {
       router.push("/admin/dashboard");
     }
   }, [router]);
@@ -42,7 +42,6 @@ export default function AdminLogin() {
       const json = await response.json();
 
       if (response.ok && json.success) {
-        localStorage.setItem("admin_token", json?.token || "");
         localStorage.setItem("admin_email", json?.data?.user?.email || "");
         localStorage.setItem("admin_role", json?.data?.user?.role || "");
 
