@@ -35,6 +35,7 @@ const addUser = async () => {
     }
 
     const newUser = new User({
+      name: email.split("@")[0],
       email,
       password,
       role

@@ -242,6 +242,7 @@ const seedDB = async () => {
     await User.deleteMany({});
     console.log("[Seeder] Creating default administrator user...");
     const adminUser = new User({
+      name: "Administrator",
       email: "admin@u1stcreation.com",
       password: "AdminPass123!",
       role: "admin"
