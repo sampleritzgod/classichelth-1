@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import Image from "next/image";
-import { API_ENDPOINTS } from "@/config";
+import { API_ENDPOINTS, API_URL } from "@/config";
+import { resolveImageUrl } from "@/utils/image";
 
 interface FAQItem {
   q: string;
@@ -56,6 +57,8 @@ export default function AdminProducts() {
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
   const [image, setImage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [alt, setAlt] = useState("");
   const [usage, setUsage] = useState("");
   const [ingredientsText, setIngredientsText] = useState(""); // Comma separated
@@ -117,19 +120,55 @@ export default function AdminProducts() {
     fetchProducts();
   }, [fetchProducts]);
 
-  // Handle local image file upload converting to Base64
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle local image file upload to backend
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Image file size should be less than 2MB.");
-        return;
+    if (!file) return;
+
+    // Client-side validation for MIME type
+    const allowedMimeTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedMimeTypes.includes(file.type)) {
+      setUploadError("Invalid image type. Only JPG, JPEG, PNG, and WEBP are allowed.");
+      showToast("Invalid image type.", "error");
+      return;
+    }
+
+    // Client-side validation for file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError("File size exceeds the 5MB limit. Please upload a smaller image.");
+      showToast("File size too large.", "error");
+      return;
+    }
+
+    try {
+      setUploading(true);
+      setUploadError(null);
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const token = localStorage.getItem("admin_token") || "mock_token";
+      const response = await fetch(`${API_URL}/api/v1/admin/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const json = await response.json();
+      if (response.ok && json.success) {
+        setImage(json.imageUrl); // Store relative path, e.g., "/uploads/product-..."
+        showToast("Image uploaded successfully!");
+      } else {
+        throw new Error(json.message || "Failed to upload image.");
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string); // base64 string
-      };
-      reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setUploadError(err.message || "Failed to upload image. Please try again.");
+      showToast(err.message || "Upload failed.", "error");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -141,6 +180,8 @@ export default function AdminProducts() {
     setPrice("");
     setOriginalPrice("");
     setImage("/images/product_supplement.png"); // Default safe fallback
+    setUploadError(null);
+    setUploading(false);
     setAlt("");
     setUsage("");
     setIngredientsText("");
@@ -162,6 +203,8 @@ export default function AdminProducts() {
     setPrice(prod.price.toString());
     setOriginalPrice(prod.originalPrice.toString());
     setImage(prod.image);
+    setUploadError(null);
+    setUploading(false);
     setAlt(prod.alt);
     setUsage(prod.usage);
     setIngredientsText(prod.ingredients.join(", "));
@@ -385,7 +428,7 @@ export default function AdminProducts() {
               {/* Image box */}
               <div className="relative w-full aspect-square bg-foreground/[0.02] border-b border-foreground/5">
                 <Image
-                  src={product.image}
+                  src={resolveImageUrl(product.image)}
                   alt={product.alt}
                   fill
                   className="object-cover"
@@ -509,14 +552,25 @@ export default function AdminProducts() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1">
-                        Upload Image File (Base64)
+                        Upload Image File
                       </label>
                       <input
                         type="file"
                         accept="image/*"
+                        disabled={uploading}
                         onChange={handleImageUpload}
-                        className="block w-full text-xs text-foreground/60 file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/15 file:cursor-pointer"
+                        className="block w-full text-xs text-foreground/60 file:mr-4 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/15 file:cursor-pointer disabled:opacity-50"
                       />
+                      {uploading && (
+                        <div className="text-[10px] text-primary font-semibold mt-1 animate-pulse">
+                          ⏳ Uploading image, please wait...
+                        </div>
+                      )}
+                      {uploadError && (
+                        <div className="text-[10px] text-red-600 font-semibold mt-1">
+                          ⚠️ {uploadError}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1">
@@ -533,8 +587,8 @@ export default function AdminProducts() {
                     </div>
                   </div>
                   {image && (
-                    <div className="mt-2 relative w-20 aspect-square rounded-lg overflow-hidden border border-foreground/5 bg-foreground/[0.02]">
-                      <img src={image} alt="Product preview" className="w-full h-full object-cover" />
+                    <div className="mt-3 relative w-20 aspect-square rounded-lg overflow-hidden border border-foreground/5 bg-foreground/[0.02]">
+                      <img src={resolveImageUrl(image)} alt="Product preview" className="w-full h-full object-cover" />
                     </div>
                   )}
                 </div>

@@ -7,6 +7,7 @@ import AuthModals from "@/components/AuthModals";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { API_ENDPOINTS } from "@/config";
+import { resolveImageUrl } from "@/utils/image";
 
 interface CartItem {
   id: number;
@@ -564,7 +565,7 @@ export default function Navbar() {
                       cartItems.map((item) => (
                         <div key={item.id} className="flex py-4 gap-4">
                           <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg border border-foreground/5 bg-foreground/[0.01]">
-                            <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                            <img src={resolveImageUrl(item.image)} alt={item.name} className="h-full w-full object-cover" />
                           </div>
                           <div className="flex flex-1 flex-col justify-between">
                             <div>

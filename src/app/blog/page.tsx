@@ -18,23 +18,23 @@ interface BlogItem {
   publishedAt: string;
 }
 
-const IMAGE_FALLBACK = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23faf9f5"/><text x="50" y="50" font-family="serif" font-size="8" fill="%238a9a86" text-anchor="middle" dominant-baseline="middle">Classic Health</text></svg>';
+import { resolveImageUrl, IMAGE_FALLBACK } from "@/utils/image";
 
 interface SafeImageProps extends Omit<React.ComponentProps<typeof Image>, "src"> {
   src: string;
 }
 
 function SafeImage({ src, alt, ...props }: SafeImageProps) {
-  const [imgSrc, setImgSrc] = useState(src);
+  const [imgSrc, setImgSrc] = useState(resolveImageUrl(src));
   
   useEffect(() => {
-    setImgSrc(src);
+    setImgSrc(resolveImageUrl(src));
   }, [src]);
 
   return (
     <Image
       {...props}
-      src={imgSrc || IMAGE_FALLBACK}
+      src={imgSrc}
       alt={alt || "Blog image"}
       onError={() => {
         setImgSrc(IMAGE_FALLBACK);

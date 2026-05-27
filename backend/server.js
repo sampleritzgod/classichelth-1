@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import fs from "fs";
 import connectDB from "./config/db.js";
 import healthRoutes from "./routes/healthRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
@@ -23,6 +24,11 @@ dotenv.config();
 // Connect to Database
 connectDB();
 
+// Ensure uploads directory exists
+if (!fs.existsSync("./uploads")) {
+  fs.mkdirSync("./uploads", { recursive: true });
+}
+
 const app = express();
 
 // Request logging middleware
@@ -33,7 +39,14 @@ if (process.env.NODE_ENV === "development") {
 }
 
 // Security headers middleware
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// Expose static uploads folder
+app.use("/uploads", express.static("uploads"));
 
 // Enable CORS (supports multiple origins and credentials)
 const allowedOrigins = process.env.CORS_ORIGIN

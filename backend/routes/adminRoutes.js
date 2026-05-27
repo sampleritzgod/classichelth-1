@@ -23,6 +23,8 @@ import {
 } from "../controllers/blogController.js";
 import { protect, restrictTo } from "../middleware/authMiddleware.js";
 import { validateBlog } from "../middleware/validateBlog.js";
+import { uploadImage } from "../controllers/uploadController.js";
+import { uploadMiddleware } from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
@@ -32,6 +34,9 @@ router.use(restrictTo("admin"));
 
 // Dashboard stats endpoint
 router.get("/dashboard/stats", getDashboardStats);
+
+// Image upload endpoint
+router.post("/upload", uploadMiddleware, uploadImage);
 
 // Appointment management endpoints
 router.route("/appointments")
