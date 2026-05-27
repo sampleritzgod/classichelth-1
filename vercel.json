@@ -1,0 +1,13 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://u-1st-creation.onrender.com/api/v1/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://u-1st-creation.onrender.com/uploads/:path*"
+    }
+  ]
+}
