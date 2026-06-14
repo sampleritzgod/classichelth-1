@@ -28,7 +28,7 @@ export default function Trust() {
   ];
 
   const badges = [
-    { title: "BAMS Doctors", desc: "Clinically Supervised" },
+    { title: "BAMS Doctors and Health Experts", desc: "Clinically Supervised" },
     { title: "100% Organic", desc: "Pure Formulations" },
     { title: "Root Cause", desc: "Zero Symptom Masking" },
     { title: "ISO Certified", desc: "Standardized Care" }

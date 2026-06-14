@@ -65,7 +65,6 @@ export default function Footer() {
               <li><a href="#services" className="text-sm text-foreground/80 hover:text-primary transition-colors">Services</a></li>
               <li><a href="#about" className="text-sm text-foreground/80 hover:text-primary transition-colors">About Us</a></li>
               <li><a href="#blog" className="text-sm text-foreground/80 hover:text-primary transition-colors">Blog</a></li>
-              <li><a href="#shop" className="text-sm text-foreground/80 hover:text-primary transition-colors">Shop</a></li>
               <li><a href="#booking" className="text-sm text-foreground/80 hover:text-primary transition-colors">Book Online</a></li>
             </ul>
           </div>
@@ -78,7 +77,7 @@ export default function Footer() {
               <li><a href="#services" className="text-sm text-foreground/80 hover:text-primary transition-colors">PCOD & PCOS Correction</a></li>
               <li><a href="#services" className="text-sm text-foreground/80 hover:text-primary transition-colors">Obesity & Weight Management</a></li>
               <li><a href="#services" className="text-sm text-foreground/80 hover:text-primary transition-colors">Joint Care & Pain Relief</a></li>
-              <li><a href="#services" className="text-sm text-foreground/80 hover:text-primary transition-colors">Immunity & Rejuvenation</a></li>
+              <li><a href="#services" className="text-sm text-foreground/80 hover:text-primary transition-colors">Immunity & Wellness</a></li>
             </ul>
           </div>
 

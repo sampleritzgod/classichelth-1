@@ -38,7 +38,7 @@ export default function Services() {
       href: "#booking",
     },
     {
-      title: "Immunity & Rejuvenation",
+      title: "Immunity & Wellness",
       description: "Enhance your natural defense mechanism and rejuvenate cellular energy through traditional Rasayana herbs and gentle detox therapies.",
       image: "/images/blog_nutrition.png",
       alt: "Fresh organic vegetables representing immune-boosting nutrition",

@@ -283,10 +283,6 @@ export default function Navbar() {
               <Link href={getLink("#services")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Services</Link>
               <Link href={getLink("#about")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">About Us</Link>
               <Link href={getLink("#blog")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Blog</Link>
-              <Link href={getLink("#shop")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Shop</Link>
-              
-
-
               <Link href={getLink("#booking")} className="text-sm font-medium text-foreground/90 transition-colors hover:text-primary relative after:absolute after:bottom-[-6px] after:left-0 after:h-[2px] after:w-0 hover:after:w-full after:bg-primary after:transition-all">Book Online</Link>
             </div>
 
@@ -363,21 +359,6 @@ export default function Navbar() {
                 </button>
               )}
 
-              {/* Shopping Cart Icon */}
-              <button 
-                onClick={() => setIsCartOpen(true)}
-                className="relative p-1.5 text-foreground/80 hover:text-primary transition-all duration-300 rounded-full hover:bg-foreground/5 cursor-pointer"
-                aria-label="Open cart"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-                {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-white shadow-sm animate-scale">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
 
               {/* WhatsApp Us Button */}
               <a
@@ -392,19 +373,7 @@ export default function Navbar() {
 
             {/* Mobile Actions (Cart, Menu) */}
             <div className="flex items-center gap-x-2 lg:hidden">
-              <button 
-                onClick={() => setIsCartOpen(true)}
-                className="relative p-1.5 text-foreground/80 hover:text-primary rounded-full"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 01-1.12-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007zM8.625 10.5a.375.375 0 11-.75 0 .375.375 0 01.75 0zm7.5 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-                {cartCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
+
 
               <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -436,7 +405,6 @@ export default function Navbar() {
               <Link href={getLink("#services")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Services</Link>
               <Link href={getLink("#about")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">About Us</Link>
               <Link href={getLink("#blog")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Blog</Link>
-              <Link href={getLink("#shop")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Shop</Link>
               <Link href={getLink("#booking")} onClick={() => setIsOpen(false)} className="block rounded-md px-3 py-2 text-base font-medium text-foreground/80 hover:bg-foreground/5 hover:text-primary">Book Online</Link>
               
               <div className="mt-6 flex flex-col gap-y-3 px-3">

@@ -34,14 +34,14 @@ export default function About() {
                 We believe that true wellness begins with understanding the root cause of your health journey. At U 1st Creation, we move beyond symptom management to offer personalized treatment plans that integrate natural healing methods with modern healthcare practices.
               </p>
               <p>
-                Our clinical protocols are guided by certified BAMS (Ayurveda) practitioners and lifestyle experts, ensuring safe, evidence-based care. We combine traditional pulse diagnosis (Nadi Parikshan) with personalized nutrition and organic botanicals to support long-term recovery.
+                Our clinical protocols are guided by BAMS Doctors and Health Experts, ensuring safe, evidence-based care. We combine traditional pulse diagnosis (Nadi Parikshan) with personalized nutrition and organic botanicals to support long-term recovery.
               </p>
             </div>
             
             {/* Stats and Credentials */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 border-t border-foreground/5 pt-8 mt-8 mb-8">
               <div>
-                <span className="block font-serif text-3xl font-bold text-primary">15+</span>
+                <span className="block font-serif text-3xl font-bold text-primary">7+</span>
                 <span className="block text-[10px] uppercase tracking-wider text-foreground/60 font-semibold mt-1 leading-tight">Years Clinical Excellence</span>
               </div>
               <div>
