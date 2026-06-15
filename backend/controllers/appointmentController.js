@@ -21,6 +21,8 @@ export const createAppointment = async (req, res, next) => {
       condition,
       message,
       service: service || "General Wellness Consultation",
+      status: "confirmed",
+      notes: "Direct booking (no payment required)",
     });
 
     await appointment.save();

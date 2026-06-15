@@ -150,151 +150,59 @@ export default function Booking() {
     }
 
     if (bookingDate && bookingTime && selectedService && bookingName && bookingEmail && bookingPhone) {
-      let shouldResetLoading = true;
       try {
-        console.log("[Payment Flow] Booking submit triggered. Payment request started.");
+        console.log("[Booking Flow] Booking submit triggered. Initiating direct appointment creation.");
         setIsSubmitting(true);
         setBookingError(null);
 
-        // 1. Create order on the backend
-        const orderResponse = await fetch(API_ENDPOINTS.createOrder, {
+        // Call the direct appointment creation endpoint
+        const response = await fetch(API_ENDPOINTS.appointments, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            amount: selectedService.price,
-            type: "appointment",
+            name: bookingName,
+            email: bookingEmail,
+            phone: bookingPhone,
+            date: bookingDate,
+            timeSlot: bookingTime,
+            condition: selectedService.name,
+            message: bookingMessage,
+            service: selectedService.name,
           }),
           credentials: "include",
         });
 
-        const orderJson = await orderResponse.json();
-        console.log("[Payment Flow] Create order response received:", orderJson);
+        const json = await response.json();
+        console.log("[Booking Flow] Direct booking response received:", json);
 
-        if (!orderResponse.ok || !orderJson.success) {
-          throw new Error(orderJson.message || "Failed to initiate payment order.");
+        if (!response.ok || !json.success) {
+          throw new Error(json.message || "Failed to book appointment.");
         }
 
-        const { order, keyId, mock } = orderJson;
+        console.log("[Booking Flow] Appointment booked successfully!");
+        setBookingSuccess(true);
+        showToast("Appointment booked successfully!", "success");
+        
+        // Clear fields
+        setBookingName("");
+        setBookingEmail("");
+        setBookingPhone("");
+        setBookingDate("");
+        setBookingTime("");
+        setBookingMessage("");
 
-        // 2. Load Razorpay script
-        const isLoaded = await loadRazorpayScript();
-        if (!isLoaded) {
-          throw new Error("Failed to load Razorpay Payment Gateway SDK.");
-        }
-
-        // 3. Configure checkout modal options
-        const options = {
-          key: keyId,
-          amount: order.amount,
-          currency: order.currency,
-          name: "U 1st Creation",
-          description: `Appointment: ${selectedService.name}`,
-          order_id: order.id,
-          prefill: {
-            name: bookingName,
-            email: bookingEmail,
-            contact: bookingPhone,
-          },
-          theme: {
-            color: "#1e3f20",
-          },
-          handler: async (response: any) => {
-            try {
-              console.log("[Payment Flow] Razorpay payment completed. Initiating verification.");
-              setIsSubmitting(true);
-              
-              const verifyResponse = await fetch(API_ENDPOINTS.verifyPayment, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  razorpay_order_id: response.razorpay_order_id || order.id,
-                  razorpay_payment_id: response.razorpay_payment_id || `mock_pay_${Date.now()}`,
-                  razorpay_signature: response.razorpay_signature || "mock_sig",
-                  type: "appointment",
-                  amount: selectedService.price,
-                  appointmentDetails: {
-                    name: bookingName,
-                    email: bookingEmail,
-                    phone: bookingPhone,
-                    date: bookingDate,
-                    timeSlot: bookingTime,
-                    condition: selectedService.name,
-                    message: bookingMessage,
-                    service: selectedService.name,
-                  },
-                }),
-                credentials: "include",
-              });
-
-              const verifyJson = await verifyResponse.json();
-              console.log("[Payment Flow] Verification response received:", verifyJson);
-
-              if (verifyResponse.ok && verifyJson.success) {
-                console.log("[Payment Flow] Appointment booked and verified successfully!");
-                setBookingSuccess(true);
-                showToast("Appointment booked successfully!", "success");
-                
-                // Clear fields
-                setBookingName("");
-                setBookingEmail("");
-                setBookingPhone("");
-                setBookingDate("");
-                setBookingTime("");
-                setBookingMessage("");
-
-                setTimeout(() => {
-                  handleCloseModal();
-                  setBookingSuccess(false);
-                }, 4000);
-              } else {
-                console.error("[Payment Flow] Verification failed backend rejection.");
-                throw new Error(verifyJson.message || "Payment verification failed.");
-              }
-            } catch (err: any) {
-              console.error("[Payment Flow] Verification Exception:", err);
-              setBookingError(err.message || "Failed to verify transaction. Please contact support.");
-              showToast(err.message || "Failed to verify transaction.", "error");
-            } finally {
-              setIsSubmitting(false);
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              console.log("[Payment Flow] Razorpay modal dismissed/cancelled by user.");
-              setIsSubmitting(false);
-              setBookingError("Payment checkout cancelled by user.");
-              showToast("Payment cancelled by user.", "error");
-            },
-          },
-        };
-
-        if (mock) {
-          console.log("[MOCK] Simulating Razorpay checkout flow...");
-          shouldResetLoading = false;
-          setTimeout(() => {
-            options.handler({
-              razorpay_order_id: order.id,
-              razorpay_payment_id: `mock_pay_${Date.now()}`,
-              razorpay_signature: "mock_sig",
-            });
-          }, 1500);
-        } else {
-          const rzp = new (window as any).Razorpay(options);
-          rzp.open();
-          shouldResetLoading = false;
-        }
+        setTimeout(() => {
+          handleCloseModal();
+          setBookingSuccess(false);
+        }, 4000);
       } catch (err: any) {
-        console.error("[Payment Flow] Order Creation/SDK Load Exception:", err);
+        console.error("[Booking Flow] Booking Exception:", err);
         setBookingError(err.message || "Something went wrong. Please try again.");
         showToast(err.message || "Something went wrong. Please try again.", "error");
       } finally {
-        if (shouldResetLoading) {
-          setIsSubmitting(false);
-        }
+        setIsSubmitting(false);
       }
     }
   };
@@ -407,9 +315,9 @@ export default function Booking() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
                 </div>
-                <h3 className="font-serif text-xl font-semibold text-primary mb-2">Booking Success!</h3>
+                <h3 className="font-serif text-xl font-semibold text-primary mb-2">Booking Confirmed!</h3>
                 <p className="text-xs text-foreground/70">
-                  Your slot for <strong>{selectedService.name}</strong> has been tentatively held. Redirecting to confirmation...
+                  Your appointment for <strong>{selectedService.name}</strong> has been successfully booked.
                 </p>
               </div>
             ) : (
@@ -518,7 +426,7 @@ export default function Booking() {
                     disabled={isSubmitting}
                     className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover mt-2 cursor-pointer disabled:opacity-50"
                   >
-                    {isSubmitting ? "Processing Payment..." : `Pay ₹${selectedService.price} & Book`}
+                    {isSubmitting ? "Booking..." : "Book Appointment"}
                   </button>
                 </form>
               </>
