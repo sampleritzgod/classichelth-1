@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Appointment from "../models/Appointment.js";
-import { sendBookingConfirmation, sendAdminAppointmentNotification } from "../services/mailService.js";
+import { appointmentEvents } from "../services/eventService.js";
+import { checkSlotAvailability, findAlternativeSlots, STANDARD_SLOTS } from "../services/schedulingService.js";
 
 /**
  * @desc    Create a new appointment
@@ -10,52 +11,82 @@ import { sendBookingConfirmation, sendAdminAppointmentNotification } from "../se
 export const createAppointment = async (req, res, next) => {
   try {
     const { name, email, phone, date, timeSlot, condition, message, service } = req.body;
+    const targetService = service || "General Wellness Consultation";
 
-    // Create and store the appointment in MongoDB
-    const appointment = new Appointment({
-      user: req.user?._id,
-      name,
-      email,
-      phone,
-      date,
-      timeSlot,
-      condition,
-      message,
-      service: service || "General Wellness Consultation",
-      status: "pending",
-      statusHistory: [
-        {
-          status: "pending",
-          statusMessage: "Appointment request submitted.",
-          changedAt: new Date(),
-        },
-      ],
-    });
+    // Retry loop for concurrency collisions
+    let attempts = 0;
+    let savedAppointment = null;
+    let alternatives = [];
 
-    await appointment.save();
+    while (attempts < 3) {
+      // 1. Check availability and get a free slotIndex
+      const availability = await checkSlotAvailability(date, timeSlot, targetService);
 
-    // Send confirmation email asynchronously (do not block client response)
-    sendBookingConfirmation(appointment.email, appointment.name, {
-      date: appointment.date,
-      time: appointment.timeSlot,
-      service: appointment.service,
-    }).catch((err) => {
-      console.error("✉️ Failed to send email confirmation for appointment:", err.message);
-    });
+      if (!availability.available) {
+        // Slot is full, break to look up alternatives
+        break;
+      }
 
-    // Send admin notification email
-    sendAdminAppointmentNotification(appointment).catch((err) => {
-      console.error("✉️ Failed to send admin notification for appointment:", err.message);
-    });
+      // 2. Create the appointment in confirmed state with slotIndex
+      const appointment = new Appointment({
+        user: req.user?._id,
+        name,
+        email,
+        phone,
+        date,
+        timeSlot,
+        condition,
+        message,
+        service: targetService,
+        status: "confirmed", // Instant confirmation
+        slotIndex: availability.slotIndex,
+        statusHistory: [
+          {
+            status: "confirmed",
+            statusMessage: "Appointment automatically booked and confirmed.",
+            changedAt: new Date(),
+          },
+        ],
+      });
+
+      try {
+        await appointment.save();
+        savedAppointment = appointment;
+        break; // Successfully saved, break the retry loop
+      } catch (saveError) {
+        // Check for MongoDB duplicate key error (code 11000) on the slotIndex unique index
+        if (saveError.code === 11000 && (saveError.message.includes("slotIndex") || JSON.stringify(saveError.keyValue || {}).includes("slotIndex"))) {
+          console.warn(`[Concurrency Collision] Slot collision detected for ${date} ${timeSlot} at index ${availability.slotIndex}. Retrying...`);
+          attempts++;
+        } else {
+          // Some other validation or DB error, throw it
+          throw saveError;
+        }
+      }
+    }
+
+    if (!savedAppointment) {
+      // Fetch alternative slots
+      alternatives = await findAlternativeSlots(date, timeSlot, targetService);
+
+      return res.status(400).json({
+        success: false,
+        reason: "slot_unavailable",
+        message: "The requested time slot is fully booked. Please choose an alternative slot.",
+        alternatives,
+      });
+    }
+
+    // 3. Emit event so listeners can dispatch notification/live-updates asynchronously
+    appointmentEvents.emit("appointment.created", savedAppointment);
 
     res.status(201).json({
       success: true,
       message: "Appointment booked successfully",
-      data: appointment,
+      data: savedAppointment,
     });
   } catch (error) {
     console.error("[API Error] Failed to save appointment in database:", error.message);
-    // If Mongoose validation fails, we set bad request status (400)
     if (error.name === "ValidationError") {
       res.status(400);
     }
@@ -129,6 +160,58 @@ export const getAppointmentTimeline = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: appointment.statusHistory,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Check slot availability for a given date
+ * @route   GET /api/v1/appointments/check-slots
+ * @access  Public
+ */
+export const checkSlots = async (req, res, next) => {
+  try {
+    const { date, service } = req.query;
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a date query parameter (YYYY-MM-DD)",
+      });
+    }
+
+    const targetDate = new Date(date);
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const targetService = service || "all";
+    const slotStatus = [];
+
+    for (const slot of STANDARD_SLOTS) {
+      const availability = await checkSlotAvailability(targetDate, slot, targetService);
+      
+      // Get the number of booked appointments for this slot
+      const bookedCount = await Appointment.countDocuments({
+        date: { $gte: startOfDay, $lte: endOfDay },
+        timeSlot: slot,
+        status: { $in: ["pending", "under_review", "confirmed", "rescheduled", "completed"] },
+      });
+
+      slotStatus.push({
+        timeSlot: slot,
+        capacity: availability.capacity,
+        bookedCount,
+        available: availability.available,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: slotStatus,
     });
   } catch (error) {
     next(error);

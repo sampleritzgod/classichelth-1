@@ -87,6 +87,11 @@ export default function Booking() {
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
+  // Auto-scheduling states
+  const [slotAvailability, setSlotAvailability] = useState<Array<{ timeSlot: string; available: boolean; bookedCount: number; capacity: number }>>([]);
+  const [slotLoading, setSlotLoading] = useState(false);
+  const [alternatives, setAlternatives] = useState<Array<{ date: string; timeSlot: string }>>([]);
+
   const { user } = useAuth();
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
@@ -98,6 +103,42 @@ export default function Booking() {
     console.log("[Booking Modal] Closing modal, resetting submitting states");
     setSelectedService(null);
     setIsSubmitting(false);
+    setBookingError(null);
+    setSlotAvailability([]);
+    setAlternatives([]);
+  };
+
+  // Fetch slot availability when bookingDate changes
+  useEffect(() => {
+    if (!bookingDate) {
+      setSlotAvailability([]);
+      return;
+    }
+
+    const fetchAvailability = async () => {
+      try {
+        setSlotLoading(true);
+        const response = await fetch(`${API_ENDPOINTS.appointments}/check-slots?date=${bookingDate}`, {
+          credentials: "include"
+        });
+        const json = await response.json();
+        if (json.success) {
+          setSlotAvailability(json.data);
+        }
+      } catch (err) {
+        console.error("Error fetching slot availability:", err);
+      } finally {
+        setSlotLoading(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [bookingDate]);
+
+  const handleSelectAlternative = (altDate: string, altTime: string) => {
+    setBookingDate(altDate);
+    setBookingTime(altTime);
+    setAlternatives([]);
     setBookingError(null);
   };
 
@@ -178,6 +219,9 @@ export default function Booking() {
         console.log("[Booking Flow] Direct booking response received:", json);
 
         if (!response.ok || !json.success) {
+          if (json.reason === "slot_unavailable") {
+            setAlternatives(json.alternatives || []);
+          }
           throw new Error(json.message || "Failed to book appointment.");
         }
 
@@ -332,6 +376,24 @@ export default function Booking() {
                     </div>
                   )}
 
+                  {alternatives.length > 0 && (
+                    <div className="bg-accent-soft/50 border border-primary/10 rounded-2xl p-4 text-xs leading-relaxed mt-2">
+                      <span className="font-semibold text-primary block mb-2">💡 Suggested Available Slots:</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {alternatives.map((alt, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => handleSelectAlternative(alt.date, alt.timeSlot)}
+                            className="bg-white hover:bg-primary hover:text-white border border-foreground/5 text-foreground px-3 py-1.5 rounded-full font-semibold transition-all cursor-pointer text-[10px]"
+                          >
+                            {new Date(alt.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} @ {alt.timeSlot}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-semibold text-foreground mb-1">Full Name</label>
                     <input 
@@ -388,16 +450,22 @@ export default function Booking() {
                       <label className="block text-xs font-semibold text-foreground mb-1">Preferred Time</label>
                       <select 
                         required 
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || slotLoading || !bookingDate}
                         value={bookingTime}
                         onChange={(e) => setBookingTime(e.target.value)}
                         className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all disabled:opacity-50"
                       >
-                        <option value="">Choose slot</option>
-                        <option value="09:00 AM">09:00 AM</option>
-                        <option value="11:00 AM">11:00 AM</option>
-                        <option value="02:00 PM">02:00 PM</option>
-                        <option value="04:00 PM">04:00 PM</option>
+                        <option value="">{slotLoading ? "Loading..." : !bookingDate ? "Choose date first" : "Choose slot"}</option>
+                        {["09:00 AM", "11:00 AM", "02:00 PM", "04:00 PM"].map((slot) => {
+                          const status = slotAvailability.find(s => s.timeSlot === slot);
+                          const isFull = status ? !status.available : false;
+                          const capacityMsg = status ? `(${status.capacity - status.bookedCount} free)` : "";
+                          return (
+                            <option key={slot} value={slot} disabled={isFull}>
+                              {slot} {isFull ? "(Full)" : capacityMsg}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   </div>

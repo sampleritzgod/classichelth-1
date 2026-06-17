@@ -20,6 +20,8 @@ import rateLimit from "express-rate-limit";
 import { createServer } from "http";
 import { initSocket } from "./services/socketService.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import { initNotificationService } from "./services/notificationService.js";
+import { initScheduler } from "./services/reminderScheduler.js";
 
 // Load environment variables
 dotenv.config();
@@ -152,6 +154,10 @@ const server = createServer(app);
 
 // Initialize Socket.IO
 initSocket(server, allowedOrigins);
+
+// Initialize automated notification event listeners and reminder loops
+initNotificationService();
+initScheduler();
 
 server.listen(PORT, () => {
   console.log(

@@ -13,6 +13,9 @@ import {
   toggleMessageArchived,
   replyToMessage,
   deleteMessage,
+  getCapacityOverrides,
+  createOrUpdateCapacityOverride,
+  deleteCapacityOverride,
 } from "../controllers/adminController.js";
 import {
   getAdminBlogs,
@@ -71,5 +74,12 @@ router.route("/blogs/:id")
   .get(getAdminBlogById)
   .put(validateBlog, updateBlog)
   .delete(deleteBlog);
+
+// Capacity overrides endpoints
+router.route("/capacity")
+  .get(getCapacityOverrides)
+  .post(createOrUpdateCapacityOverride);
+
+router.delete("/capacity/:id", deleteCapacityOverride);
 
 export default router;

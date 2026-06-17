@@ -76,15 +76,69 @@ const appointmentSchema = new mongoose.Schema(
       type: String,
       default: "General Wellness Consultation",
     },
+    appointmentId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    slotIndex: {
+      type: Number,
+    },
+    reminder24hSent: {
+      type: Boolean,
+      default: false,
+    },
+    reminder24hSentAt: {
+      type: Date,
+    },
+    reminder1hSent: {
+      type: Boolean,
+      default: false,
+    },
+    reminder1hSentAt: {
+      type: Date,
+    },
+    interventionRequired: {
+      type: Boolean,
+      default: false,
+    },
+    interventionReason: {
+      type: String,
+      default: "",
+    },
   },
   {
     timestamps: true, // Automatically creates createdAt and updatedAt fields
   }
 );
 
+// Pre-save hook to generate unique appointment ID
+appointmentSchema.pre("save", function (next) {
+  if (!this.appointmentId) {
+    const formattedDate = this.date 
+      ? new Date(this.date).toISOString().slice(0, 10).replace(/-/g, "") 
+      : new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    this.appointmentId = `APP-${formattedDate}-${randomPart}`;
+  }
+  next();
+});
+
 // Indexes for rapid sorting and filtering in the admin panel
 appointmentSchema.index({ date: 1 });
 appointmentSchema.index({ status: 1 });
+
+// Compound unique index on date, time slot, and slot index to prevent double-booking for active slots
+appointmentSchema.index(
+  { date: 1, timeSlot: 1, slotIndex: 1 },
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      status: { $in: ["pending", "under_review", "confirmed", "rescheduled", "completed"] },
+      slotIndex: { $exists: true }
+    } 
+  }
+);
 
 const Appointment = mongoose.model("Appointment", appointmentSchema);
 

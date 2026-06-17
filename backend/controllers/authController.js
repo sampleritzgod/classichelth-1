@@ -210,3 +210,38 @@ export const updateProfile = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * @desc    Register a new FCM push token for authenticated user
+ * @route   POST /api/v1/auth/fcm-token
+ * @access  Private
+ */
+export const registerFCMToken = async (req, res, next) => {
+  try {
+    const { fcmToken } = req.body;
+
+    if (!fcmToken || typeof fcmToken !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a valid fcmToken string.",
+      });
+    }
+
+    // Add token to fcmTokens array avoiding duplicates
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $addToSet: { fcmTokens: fcmToken } },
+      { new: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "FCM token registered successfully",
+      data: {
+        fcmTokensCount: user.fcmTokens.length,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

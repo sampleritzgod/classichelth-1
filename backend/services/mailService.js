@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import { queueService } from "./queueService.js";
 
 dotenv.config();
 
@@ -141,7 +142,7 @@ const getHtmlTemplate = (title, contentHtml) => {
 /**
  * Send an email (mock fallback if credentials are not specified)
  */
-const sendMail = async ({ to, subject, html, text }) => {
+export const sendMailDirect = async ({ to, subject, html, text }) => {
   if (isMailConfigured && transporter) {
     try {
       const info = await transporter.sendMail({
@@ -165,6 +166,20 @@ const sendMail = async ({ to, subject, html, text }) => {
     console.log("=====================================================\n");
     return { mock: true, messageId: `mock_${Date.now()}` };
   }
+};
+
+/**
+ * Public sendMail function that enqueues the email task in the background worker queue
+ */
+export const sendMail = async ({ to, subject, html, text, dedupKey }) => {
+  return queueService.enqueue({
+    type: "email",
+    recipient: to,
+    title: subject,
+    body: html,
+    data: { text },
+    dedupKey
+  });
 };
 
 /**
@@ -277,6 +292,8 @@ export const sendBookingStatusUpdate = async (email, name, appointment) => {
     statusBadgeStyle = "background-color: #ffebee; color: #c62828;";
   } else if (status.toLowerCase() === "completed") {
     statusBadgeStyle = "background-color: #e3f2fd; color: #1565c0;";
+  } else if (status.toLowerCase() === "rescheduled") {
+    statusBadgeStyle = "background-color: #f3e5f5; color: #6a1b9a;";
   }
 
   const text = `Hello ${name},\n\nThe status of your appointment for ${service} has been updated to: ${status}.\n\nDate: ${dateStr}\nTime: ${timeStr}\n\nBest regards,\nU 1st Creation`;
@@ -593,5 +610,56 @@ export const sendAdminProductOrderNotification = async (order, customerName, cus
   );
 
   return sendMail({ to: adminEmail, subject, html, text });
+};
+
+/**
+ * Send Appointment Reminder Email
+ */
+export const sendAppointmentReminderEmail = async (email, name, appointment, reminderType) => {
+  const service = appointment.service || "Wellness Consultation";
+  const dateStr = new Date(appointment.date).toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const timeStr = appointment.timeSlot || appointment.time;
+  const timeFrame = reminderType === "1h" ? "1 hour" : "24 hours";
+  
+  const subject = `Reminder: Your Appointment is in ${timeFrame}`;
+  const text = `Hello ${name},\n\nThis is a friendly reminder that your appointment for ${service} is scheduled in ${timeFrame}.\n\nDate: ${dateStr}\nTime: ${timeStr}\n\nWe look forward to seeing you.`;
+
+  const html = getHtmlTemplate(
+    "Upcoming Appointment Reminder",
+    `
+    <p>Dear ${name},</p>
+    <p>This is a friendly reminder that your upcoming appointment at U 1st Creation is scheduled in <strong>${timeFrame}</strong>.</p>
+    
+    <div style="background-color: #fbfaf7; border: 1px solid #e9e6df; padding: 24px; border-radius: 12px; margin: 24px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70; width: 35%;">Service:</td>
+          <td style="padding: 6px 0; color: #1c3325; font-weight: bold;">${service}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Date:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${dateStr}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Time:</td>
+          <td style="padding: 6px 0; color: #1c3325;">${timeStr}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-weight: 600; color: #6e7a70;">Appointment ID:</td>
+          <td style="padding: 6px 0; color: #1c3325; font-family: monospace; font-weight: bold;">${appointment.appointmentId || ""}</td>
+        </tr>
+      </table>
+    </div>
+    
+    <p>Please log in to your profile to manage your booking, or reply to this email if you need to reschedule.</p>
+    `
+  );
+
+  return sendMail({ to: email, subject, html, text });
 };
 

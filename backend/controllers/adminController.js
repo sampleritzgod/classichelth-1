@@ -1,6 +1,7 @@
 import Appointment from "../models/Appointment.js";
 import Message from "../models/Message.js";
 import Notification from "../models/Notification.js";
+import BookingCapacity from "../models/BookingCapacity.js";
 import { notifyUser } from "../services/socketService.js";
 import {
   sendInquiryReply,
@@ -342,6 +343,8 @@ export const getDashboardStats = async (req, res, next) => {
     const confirmedAppointments = await Appointment.countDocuments({ status: "confirmed" });
     const completedAppointments = await Appointment.countDocuments({ status: "completed" });
     const cancelledAppointments = await Appointment.countDocuments({ status: "cancelled" });
+    const underReviewAppointments = await Appointment.countDocuments({ status: "under_review" });
+    const rescheduledAppointments = await Appointment.countDocuments({ status: "rescheduled" });
 
     // 2. Today's Appointments (Scheduled for today)
     const todayStart = new Date();
@@ -362,6 +365,42 @@ export const getDashboardStats = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(5);
 
+    // 5. Daily Bookings density history for the last 7 days (including today)
+    const dailyStats = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const start = new Date(d); start.setHours(0, 0, 0, 0);
+      const end = new Date(d); end.setHours(23, 59, 59, 999);
+
+      const count = await Appointment.countDocuments({
+        date: { $gte: start, $lte: end },
+        status: { $ne: "cancelled" },
+      });
+
+      dailyStats.push({
+        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        count,
+      });
+    }
+
+    // 6. Admin Intervention Exception Queue
+    const interventionQueue = await Appointment.find({
+      $or: [
+        { status: "under_review" },
+        { interventionRequired: true }
+      ]
+    })
+      .sort({ date: 1 })
+      .limit(10);
+
+    const interventionCount = await Appointment.countDocuments({
+      $or: [
+        { status: "under_review" },
+        { interventionRequired: true }
+      ]
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -371,6 +410,8 @@ export const getDashboardStats = async (req, res, next) => {
           confirmed: confirmedAppointments,
           completed: completedAppointments,
           cancelled: cancelledAppointments,
+          under_review: underReviewAppointments,
+          rescheduled: rescheduledAppointments,
           today: appointmentsToday,
         },
         messages: {
@@ -378,6 +419,9 @@ export const getDashboardStats = async (req, res, next) => {
           unread: unreadMessages,
         },
         latestBookings,
+        dailyStats,
+        interventionQueue,
+        interventionCount,
       },
     });
   } catch (error) {
@@ -588,6 +632,100 @@ export const deleteMessage = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Message deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get all capacity configurations/overrides
+ * @route   GET /api/v1/admin/capacity
+ * @access  Private (Admin)
+ */
+export const getCapacityOverrides = async (req, res, next) => {
+  try {
+    const capacities = await BookingCapacity.find().sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: capacities,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Create or update a capacity override
+ * @route   POST /api/v1/admin/capacity
+ * @access  Private (Admin)
+ */
+export const createOrUpdateCapacityOverride = async (req, res, next) => {
+  try {
+    const { service, date, dayOfWeek, timeSlot, capacity } = req.body;
+
+    if (!timeSlot || capacity === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a timeSlot and capacity",
+      });
+    }
+
+    const filter = { service: service || "all", timeSlot };
+    if (date) {
+      const targetDate = new Date(date);
+      targetDate.setHours(0, 0, 0, 0);
+      filter.date = targetDate;
+    } else {
+      filter.date = null;
+    }
+
+    if (dayOfWeek !== undefined && dayOfWeek !== null && dayOfWeek !== "") {
+      filter.dayOfWeek = parseInt(dayOfWeek, 10);
+    } else {
+      filter.dayOfWeek = null;
+    }
+
+    const update = {
+      capacity: parseInt(capacity, 10),
+    };
+
+    // Use findOneAndUpdate with upsert
+    const capacityOverride = await BookingCapacity.findOneAndUpdate(
+      filter,
+      { ...filter, ...update },
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Capacity configuration saved successfully",
+      data: capacityOverride,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Delete a capacity override
+ * @route   DELETE /api/v1/admin/capacity/:id
+ * @access  Private (Admin)
+ */
+export const deleteCapacityOverride = async (req, res, next) => {
+  try {
+    const capacityOverride = await BookingCapacity.findByIdAndDelete(req.params.id);
+
+    if (!capacityOverride) {
+      return res.status(404).json({
+        success: false,
+        message: "Capacity configuration not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Capacity configuration deleted successfully",
     });
   } catch (error) {
     next(error);
