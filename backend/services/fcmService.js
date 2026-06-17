@@ -11,19 +11,22 @@ let fcmMessaging = null;
 
 if (isFCMConfigured) {
   try {
-    const { default: admin } = await import("firebase-admin");
+    const { initializeApp, getApps, getApp, cert } = await import("firebase-admin");
+    const { getMessaging } = await import("firebase-admin/messaging");
     
-    // Check if default app is already initialized
-    if (admin.apps.length === 0) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
+    let app;
+    if (getApps().length === 0) {
+      app = initializeApp({
+        credential: cert({
           projectId: PROJECT_ID,
           clientEmail: CLIENT_EMAIL,
           privateKey: PRIVATE_KEY.replace(/\\n/g, "\n"),
         }),
       });
+    } else {
+      app = getApp();
     }
-    fcmMessaging = admin.messaging();
+    fcmMessaging = getMessaging(app);
     console.log("[FCM Service] Firebase Admin SDK successfully initialized.");
   } catch (error) {
     console.error("[FCM Service] Failed to initialize Firebase Admin SDK:", error.message);
