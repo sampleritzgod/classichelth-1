@@ -23,6 +23,33 @@ if (typeof window !== "undefined") {
     if (isApi) {
       const newInit = { ...init };
       newInit.credentials = "include";
+      
+      // Add Authorization header if token exists in localStorage and is not already provided
+      const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
+      if (token) {
+        if (!newInit.headers) {
+          newInit.headers = {};
+        }
+        
+        if (newInit.headers instanceof Headers) {
+          if (!newInit.headers.has("Authorization")) {
+            newInit.headers.set("Authorization", `Bearer ${token}`);
+          }
+        } else if (Array.isArray(newInit.headers)) {
+          const hasAuth = newInit.headers.some(h => h[0].toLowerCase() === "authorization");
+          if (!hasAuth) {
+            newInit.headers.push(["Authorization", `Bearer ${token}`]);
+          }
+        } else {
+          // It's a Record<string, string>
+          const headersRecord = newInit.headers as Record<string, string>;
+          const hasAuth = Object.keys(headersRecord).some(k => k.toLowerCase() === "authorization");
+          if (!hasAuth) {
+            headersRecord["Authorization"] = `Bearer ${token}`;
+          }
+        }
+      }
+      
       return originalFetch(input, newInit);
     }
     
@@ -85,6 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           console.log("[AuthContext] Session invalid or unauthenticated.");
           setUser(null);
+          localStorage.removeItem("token");
+          localStorage.removeItem("admin_token");
           localStorage.removeItem("admin_email");
           localStorage.removeItem("admin_role");
         }
@@ -105,6 +134,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
         } else {
           setUser(null);
+          localStorage.removeItem("token");
+          localStorage.removeItem("admin_token");
           localStorage.removeItem("admin_email");
           localStorage.removeItem("admin_role");
         }
@@ -122,6 +153,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!data || !data.user) return;
     const user = data.user;
     setUser(user);
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      if (user?.role === "admin" || user?.role === "superadmin") {
+        localStorage.setItem("admin_token", data.token);
+      }
+    }
     if (user?.role === "admin" || user?.role === "superadmin") {
       localStorage.setItem("admin_email", user?.email || "");
       localStorage.setItem("admin_role", user?.role || "");
@@ -181,6 +218,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error("Logout request failed:", err);
     } finally {
       setUser(null);
+      localStorage.removeItem("token");
+      localStorage.removeItem("admin_token");
       localStorage.removeItem("admin_email");
       localStorage.removeItem("admin_role");
     }
