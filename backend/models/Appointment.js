@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 
 const appointmentSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: false,
+    },
     name: {
       type: String,
       required: [true, "Please add a full name"],
@@ -39,9 +44,30 @@ const appointmentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "completed", "cancelled"],
+      enum: ["pending", "under_review", "confirmed", "rescheduled", "completed", "cancelled"],
       default: "pending",
     },
+    statusMessage: {
+      type: String,
+      default: "",
+    },
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          enum: ["pending", "under_review", "confirmed", "rescheduled", "completed", "cancelled"],
+          required: true,
+        },
+        statusMessage: {
+          type: String,
+          default: "",
+        },
+        changedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     notes: {
       type: String,
       default: "",

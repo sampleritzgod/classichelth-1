@@ -13,6 +13,7 @@ export const createAppointment = async (req, res, next) => {
 
     // Create and store the appointment in MongoDB
     const appointment = new Appointment({
+      user: req.user?._id,
       name,
       email,
       phone,
@@ -21,8 +22,14 @@ export const createAppointment = async (req, res, next) => {
       condition,
       message,
       service: service || "General Wellness Consultation",
-      status: "confirmed",
-      notes: "Direct booking (no payment required)",
+      status: "pending",
+      statusHistory: [
+        {
+          status: "pending",
+          statusMessage: "Appointment request submitted.",
+          changedAt: new Date(),
+        },
+      ],
     });
 
     await appointment.save();
@@ -70,6 +77,58 @@ export const getAppointments = async (req, res, next) => {
       success: true,
       count: appointments.length,
       data: appointments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get authenticated user's appointments
+ * @route   GET /api/v1/appointments/my
+ * @access  Private
+ */
+export const getMyAppointments = async (req, res, next) => {
+  try {
+    const appointments = await Appointment.find({ user: req.user._id }).sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: appointments.length,
+      data: appointments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Get appointment status timeline
+ * @route   GET /api/v1/appointments/:id/timeline
+ * @access  Private
+ */
+export const getAppointmentTimeline = async (req, res, next) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: "Appointment not found",
+      });
+    }
+
+    // Ensure the requester owns the appointment or is an admin
+    if (appointment.user && appointment.user.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to access this timeline",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: appointment.statusHistory,
     });
   } catch (error) {
     next(error);

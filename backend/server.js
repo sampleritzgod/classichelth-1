@@ -17,6 +17,9 @@ import notFound from "./middleware/notFound.js";
 import errorHandler from "./middleware/errorHandler.js";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+import { createServer } from "http";
+import { initSocket } from "./services/socketService.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -137,6 +140,7 @@ app.use("/api/v1", blogRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 
 // Error Handling Middlewares
 app.use(notFound);
@@ -144,7 +148,12 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
+const server = createServer(app);
+
+// Initialize Socket.IO
+initSocket(server, allowedOrigins);
+
+server.listen(PORT, () => {
   console.log(
     `[Server] Running in ${process.env.NODE_ENV || "development"} mode on http://localhost:${PORT}`
   );

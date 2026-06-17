@@ -13,8 +13,9 @@ interface Appointment {
   timeSlot: string;
   condition?: string;
   message?: string;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "under_review" | "confirmed" | "rescheduled" | "completed" | "cancelled";
   notes?: string;
+  statusMessage?: string;
   service?: string;
   createdAt: string;
 }
@@ -55,8 +56,9 @@ export default function AdminAppointments() {
     condition: string;
     message: string;
     service: string;
-    status: "pending" | "confirmed" | "completed" | "cancelled";
+    status: "pending" | "under_review" | "confirmed" | "rescheduled" | "completed" | "cancelled";
     notes: string;
+    statusMessage: string;
   } | null>(null);
 
   const [savingDetails, setSavingDetails] = useState(false);
@@ -242,6 +244,7 @@ export default function AdminAppointments() {
       service: booking.service || "General Wellness Consultation",
       status: booking.status || "pending",
       notes: booking.notes || "",
+      statusMessage: booking.statusMessage || "",
     });
 
     // Default template text based on current status
@@ -478,9 +481,11 @@ export default function AdminAppointments() {
             className="block w-full rounded-lg border border-foreground/15 bg-background px-3 py-2.5 text-xs text-foreground focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all cursor-pointer"
           >
             <option value="all">All Booking States</option>
-            <option value="pending">Pending Approval</option>
-            <option value="confirmed">Confirmed Sessions</option>
-            <option value="completed">Completed Therapies</option>
+            <option value="pending">Pending</option>
+            <option value="under_review">Under Review</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="rescheduled">Rescheduled</option>
+            <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
         </div>
@@ -633,15 +638,21 @@ export default function AdminAppointments() {
                         className={`inline-flex items-center rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider border focus:outline-none cursor-pointer transition-all ${
                           booking.status === "confirmed"
                             ? "bg-green-50 text-green-700 border-green-200"
-                            : booking.status === "completed"
+                            : booking.status === "under_review"
                             ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : booking.status === "rescheduled"
+                            ? "bg-orange-50 text-orange-700 border-orange-200"
+                            : booking.status === "completed"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : booking.status === "cancelled"
                             ? "bg-red-50 text-red-700 border-red-200"
                             : "bg-amber-50 text-amber-700 border-amber-200"
                         }`}
                       >
                         <option value="pending">Pending</option>
+                        <option value="under_review">Under Review</option>
                         <option value="confirmed">Confirmed</option>
+                        <option value="rescheduled">Rescheduled</option>
                         <option value="completed">Completed</option>
                         <option value="cancelled">Cancelled</option>
                       </select>
@@ -803,11 +814,27 @@ export default function AdminAppointments() {
                   onChange={(e) => setEditForm({ ...editForm, status: e.target.value as any })}
                   className="w-full px-3 py-2 border border-foreground/15 rounded-lg bg-white text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/10 cursor-pointer"
                 >
-                  <option value="pending">Pending Approval</option>
+                  <option value="pending">Pending</option>
+                  <option value="under_review">Under Review</option>
                   <option value="confirmed">Confirmed</option>
+                  <option value="rescheduled">Rescheduled</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+              </div>
+
+              {/* Status Message / Remarks */}
+              <div className="md:col-span-2">
+                <label className="block text-[10px] uppercase font-bold text-foreground/50 tracking-wider mb-1">
+                  Status Message / Remarks (Shown to Patient)
+                </label>
+                <textarea
+                  rows={2}
+                  value={editForm.statusMessage}
+                  onChange={(e) => setEditForm({ ...editForm, statusMessage: e.target.value })}
+                  placeholder="Provide details about the status update (e.g. reason for reschedule, completion details, cancellation notes...)"
+                  className="w-full px-3 py-2 border border-foreground/15 rounded-lg bg-white text-xs focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/10 resize-none"
+                />
               </div>
 
               {/* Symptom/Concern */}

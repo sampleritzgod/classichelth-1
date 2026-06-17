@@ -1,5 +1,7 @@
 import Appointment from "../models/Appointment.js";
 import Message from "../models/Message.js";
+import Notification from "../models/Notification.js";
+import { notifyUser } from "../services/socketService.js";
 import {
   sendInquiryReply,
   sendBookingConfirmation,
@@ -86,8 +88,8 @@ export const getAdminAppointmentById = async (req, res, next) => {
  */
 export const updateAppointmentStatus = async (req, res, next) => {
   try {
-    const { status } = req.body;
-    const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+    const { status, statusMessage, date, timeSlot } = req.body;
+    const validStatuses = ["pending", "under_review", "confirmed", "rescheduled", "completed", "cancelled"];
 
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
@@ -107,6 +109,23 @@ export const updateAppointmentStatus = async (req, res, next) => {
 
     const statusChanged = appointment.status !== status;
     appointment.status = status;
+    
+    if (statusMessage !== undefined) {
+      appointment.statusMessage = statusMessage;
+    }
+    
+    if (status === "rescheduled" || date || timeSlot) {
+      if (date) appointment.date = date;
+      if (timeSlot) appointment.timeSlot = timeSlot;
+    }
+
+    // Push transition to statusHistory
+    appointment.statusHistory.push({
+      status,
+      statusMessage: statusMessage || `Status updated to ${status.replace("_", " ")}`,
+      changedAt: new Date(),
+    });
+
     await appointment.save();
 
     if (statusChanged) {
@@ -118,6 +137,33 @@ export const updateAppointmentStatus = async (req, res, next) => {
         status: appointment.status,
       }).catch((err) => {
         console.error("Failed to send status update email:", err.message);
+      });
+    }
+
+    // Create Notification and trigger Socket.IO notification if user is associated
+    if (appointment.user) {
+      const displayStatus = status.replace("_", " ").toUpperCase();
+      await Notification.create({
+        user: appointment.user,
+        appointment: appointment._id,
+        type: "status_update",
+        title: `Appointment Status: ${displayStatus}`,
+        message: statusMessage || `Your appointment status has been updated to ${status.replace("_", " ")}.`,
+      });
+
+      // Notify user of appointment update
+      notifyUser(appointment.user.toString(), "appointment_updated", {
+        appointmentId: appointment._id,
+        status,
+        statusMessage,
+        date: appointment.date,
+        timeSlot: appointment.timeSlot,
+      });
+
+      // Notify user of new notification count
+      const unreadCount = await Notification.countDocuments({ user: appointment.user, isRead: false });
+      notifyUser(appointment.user.toString(), "notifications_updated", {
+        unreadCount,
       });
     }
 
@@ -138,7 +184,7 @@ export const updateAppointmentStatus = async (req, res, next) => {
  */
 export const updateAppointment = async (req, res, next) => {
   try {
-    const { name, email, phone, date, timeSlot, condition, message, status, service, notes } = req.body;
+    const { name, email, phone, date, timeSlot, condition, message, status, service, notes, statusMessage } = req.body;
 
     const appointment = await Appointment.findById(req.params.id);
 
@@ -162,10 +208,19 @@ export const updateAppointment = async (req, res, next) => {
     if (status !== undefined) appointment.status = status;
     if (service !== undefined) appointment.service = service;
     if (notes !== undefined) appointment.notes = notes;
-
-    await appointment.save();
+    if (statusMessage !== undefined) appointment.statusMessage = statusMessage;
 
     const statusChanged = status !== undefined && oldStatus !== status;
+
+    if (statusChanged || statusMessage !== undefined) {
+      appointment.statusHistory.push({
+        status: status || appointment.status,
+        statusMessage: statusMessage || `Details updated`,
+        changedAt: new Date(),
+      });
+    }
+
+    await appointment.save();
 
     if (statusChanged) {
       sendBookingStatusUpdate(appointment.email, appointment.name, {
@@ -176,6 +231,33 @@ export const updateAppointment = async (req, res, next) => {
       }).catch((err) => {
         console.error("Failed to send status update email on PUT:", err.message);
       });
+
+      // Create Notification and trigger Socket.IO notification if user is associated
+      if (appointment.user) {
+        const displayStatus = appointment.status.replace("_", " ").toUpperCase();
+        await Notification.create({
+          user: appointment.user,
+          appointment: appointment._id,
+          type: "status_update",
+          title: `Appointment Status: ${displayStatus}`,
+          message: statusMessage || `Your appointment status has been updated to ${appointment.status.replace("_", " ")}.`,
+        });
+
+        // Notify user of appointment update
+        notifyUser(appointment.user.toString(), "appointment_updated", {
+          appointmentId: appointment._id,
+          status: appointment.status,
+          statusMessage: appointment.statusMessage,
+          date: appointment.date,
+          timeSlot: appointment.timeSlot,
+        });
+
+        // Notify user of new notification count
+        const unreadCount = await Notification.countDocuments({ user: appointment.user, isRead: false });
+        notifyUser(appointment.user.toString(), "notifications_updated", {
+          unreadCount,
+        });
+      }
     }
 
     res.status(200).json({

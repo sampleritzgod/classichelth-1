@@ -27,5 +27,8 @@ export const API_ENDPOINTS = {
   profile: `${API_URL}/api/v1/auth/profile`,
   createOrder: `${API_URL}/api/v1/payments/create-order`,
   verifyPayment: `${API_URL}/api/v1/payments/verify`,
+  myAppointments: `${API_URL}/api/v1/appointments/my`,
+  notifications: `${API_URL}/api/v1/notifications`,
+  markAllNotificationsRead: `${API_URL}/api/v1/notifications/read-all`,
 };
 
