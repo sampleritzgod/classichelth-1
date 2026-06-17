@@ -1,9 +1,26 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { io, Socket } from "socket.io-client";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import type { Socket } from "socket.io-client";
 import { API_ENDPOINTS, API_URL } from "@/config";
 import { useAuth } from "./AuthContext";
+
+// Realtime socket events other components can subscribe to via the shared socket.
+export type RealtimeEvent =
+  | "appointment_created"
+  | "appointment_updated"
+  | "appointment_reminder"
+  | "admin_appointment_created"
+  | "admin_appointment_updated"
+  | "notifications_updated";
 
 export interface NotificationItem {
   _id: string;
@@ -21,6 +38,10 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   fetchNotifications: () => Promise<void>;
+  // Subscribe to a realtime event over the single shared socket. Returns an
+  // unsubscribe function. Used by the profile and admin dashboards to refresh
+  // their data in real time without opening additional socket connections.
+  subscribe: (event: RealtimeEvent, handler: (data: unknown) => void) => () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -30,9 +51,34 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
 
-  const fetchNotifications = async () => {
+  // Registry of external subscribers keyed by event name, dispatched from the
+  // single shared socket below.
+  const listenersRef = useRef<Map<RealtimeEvent, Set<(data: unknown) => void>>>(new Map());
+
+  const subscribe = useCallback(
+    (event: RealtimeEvent, handler: (data: unknown) => void) => {
+      const map = listenersRef.current;
+      if (!map.has(event)) map.set(event, new Set());
+      map.get(event)!.add(handler);
+      return () => {
+        map.get(event)?.delete(handler);
+      };
+    },
+    []
+  );
+
+  const emitToSubscribers = useCallback((event: RealtimeEvent, data: unknown) => {
+    listenersRef.current.get(event)?.forEach((cb) => {
+      try {
+        cb(data);
+      } catch (err) {
+        console.error(`[Notification Context] subscriber for ${event} threw:`, err);
+      }
+    });
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
     if (!user) return;
     try {
       setLoading(true);
@@ -49,9 +95,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     try {
       const res = await fetch(`${API_ENDPOINTS.notifications}/${id}/read`, {
         method: "PATCH",
@@ -67,9 +113,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (err) {
       console.error("[Notification Context] Error marking read:", err);
     }
-  };
+  }, []);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       const res = await fetch(`${API_ENDPOINTS.notifications}/read-all`, {
         method: "PATCH",
@@ -83,60 +129,88 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (err) {
       console.error("[Notification Context] Error marking all read:", err);
     }
-  };
+  }, []);
 
-  // 1. Fetch notifications & bind socket on login
+  // 1. Fetch notifications & bind socket on login. socket.io-client is imported
+  // dynamically so it is NOT shipped in the bundle for anonymous visitors.
   useEffect(() => {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
-      if (socket) {
-        socket.disconnect();
-        setSocket(null);
-      }
       return;
     }
 
     fetchNotifications();
 
-    // Set up real-time websocket
-    console.log("[Notification Context] Connecting Socket.IO to:", API_URL);
-    const newSocket = io(API_URL, {
-      transports: ["websocket", "polling"],
-      withCredentials: true
-    });
+    let activeSocket: Socket | null = null;
+    let cancelled = false;
 
-    newSocket.on("connect", () => {
-      console.log("[Notification Context] Socket connected. Joining room:", user._id);
-      newSocket.emit("join", user._id);
-    });
+    const connect = async () => {
+      const { io } = await import("socket.io-client");
+      if (cancelled) return;
 
-    newSocket.on("notifications_updated", (data: { unreadCount: number }) => {
-      console.log("[Notification Context] Socket: unread count update:", data);
-      setUnreadCount(data.unreadCount);
-    });
+      // The backend authenticates the handshake, so we forward the JWT
+      // (cookie is also sent via withCredentials as a fallback).
+      const authToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("token") || localStorage.getItem("admin_token")
+          : null;
 
-    newSocket.on("appointment_created", (data: any) => {
-      console.log("[Notification Context] Socket: appointment_created:", data);
-      fetchNotifications();
-    });
+      const newSocket = io(API_URL, {
+        transports: ["websocket", "polling"],
+        withCredentials: true,
+        auth: { token: authToken },
+      });
 
-    newSocket.on("appointment_updated", (data: any) => {
-      console.log("[Notification Context] Socket: appointment_updated:", data);
-      fetchNotifications();
-    });
+      newSocket.on("connect", () => {
+        newSocket.emit("join", user._id);
+      });
 
-    newSocket.on("appointment_reminder", (data: any) => {
-      console.log("[Notification Context] Socket: appointment_reminder:", data);
-      fetchNotifications();
-    });
+      newSocket.on("connect_error", (err) => {
+        console.warn("[Notification Context] Socket connection error:", err.message);
+      });
 
-    setSocket(newSocket);
+      newSocket.on("notifications_updated", (data: { unreadCount: number }) => {
+        if (typeof data?.unreadCount === "number") setUnreadCount(data.unreadCount);
+        emitToSubscribers("notifications_updated", data);
+      });
+
+      // User-facing appointment events: refresh the unread feed AND relay to
+      // any subscribers (e.g. the profile dashboard refreshing its list).
+      newSocket.on("appointment_created", (data: unknown) => {
+        fetchNotifications();
+        emitToSubscribers("appointment_created", data);
+      });
+      newSocket.on("appointment_updated", (data: unknown) => {
+        fetchNotifications();
+        emitToSubscribers("appointment_updated", data);
+      });
+      newSocket.on("appointment_reminder", (data: unknown) => {
+        fetchNotifications();
+        emitToSubscribers("appointment_reminder", data);
+      });
+
+      // Admin events: relay only (consumed by admin dashboards).
+      newSocket.on("admin_appointment_created", (data: unknown) =>
+        emitToSubscribers("admin_appointment_created", data)
+      );
+      newSocket.on("admin_appointment_updated", (data: unknown) =>
+        emitToSubscribers("admin_appointment_updated", data)
+      );
+
+      activeSocket = newSocket;
+    };
+
+    connect();
 
     return () => {
-      newSocket.disconnect();
+      cancelled = true;
+      if (activeSocket) {
+        activeSocket.off();
+        activeSocket.disconnect();
+      }
     };
-  }, [user]);
+  }, [user, fetchNotifications, emitToSubscribers]);
 
   // 2. Browser FCM Push Registration
   useEffect(() => {
@@ -209,17 +283,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setupFCM();
   }, [user]);
 
+  const contextValue = useMemo(
+    () => ({
+      notifications,
+      unreadCount,
+      loading,
+      markAsRead,
+      markAllAsRead,
+      fetchNotifications,
+      subscribe,
+    }),
+    [notifications, unreadCount, loading, markAsRead, markAllAsRead, fetchNotifications, subscribe]
+  );
+
   return (
-    <NotificationContext.Provider
-      value={{
-        notifications,
-        unreadCount,
-        loading,
-        markAsRead,
-        markAllAsRead,
-        fetchNotifications,
-      }}
-    >
+    <NotificationContext.Provider value={contextValue}>
       {children}
     </NotificationContext.Provider>
   );

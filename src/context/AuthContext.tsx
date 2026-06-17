@@ -1,7 +1,15 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { API_ENDPOINTS } from "@/config";
+import { signInWithGoogleGetIdToken } from "@/utils/firebaseClient";
 
 // Globally intercept fetch to ensure credentials: "include" is always set for API requests.
 // This preserves the session cookie across refreshes and page transitions.
@@ -70,6 +78,7 @@ interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
   signup: (name: string, email: string, password: string) => Promise<User>;
+  loginWithGoogle: () => Promise<User>;
   logout: () => Promise<void>;
   updateProfile: (name: string, email: string) => Promise<User>;
 }
@@ -149,7 +158,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // Sync token to localStorage for existing admin routes when credentials are set
-  const syncAdminSession = (data?: { user?: User; token?: string }) => {
+  const syncAdminSession = useCallback((data?: { user?: User; token?: string }) => {
     if (!data || !data.user) return;
     const user = data.user;
     setUser(user);
@@ -163,9 +172,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("admin_email", user?.email || "");
       localStorage.setItem("admin_role", user?.role || "");
     }
-  };
+  }, []);
 
-  const login = async (email: string, password: string): Promise<User> => {
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
     const response = await fetch(API_ENDPOINTS.login, {
       method: "POST",
       headers: {
@@ -183,9 +192,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     syncAdminSession(json);
     return json.data.user;
-  };
+  }, [syncAdminSession]);
 
-  const signup = async (name: string, email: string, password: string): Promise<User> => {
+  const signup = useCallback(async (name: string, email: string, password: string): Promise<User> => {
     const response = await fetch(API_ENDPOINTS.signup, {
       method: "POST",
       headers: {
@@ -203,9 +212,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     syncAdminSession(json);
     return json.data.user;
-  };
+  }, [syncAdminSession]);
 
-  const logout = async (): Promise<void> => {
+  const loginWithGoogle = useCallback(async (): Promise<User> => {
+    // 1. Complete Google popup sign-in via Firebase and obtain an ID token.
+    const idToken = await signInWithGoogleGetIdToken();
+
+    // 2. Exchange the Firebase ID token for our own session (verified server-side).
+    const response = await fetch(API_ENDPOINTS.google, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ idToken }),
+      credentials: "include",
+    });
+
+    const json = await response.json();
+
+    if (!response.ok || !json.success) {
+      throw new Error(json.message || "Google sign-in failed.");
+    }
+
+    syncAdminSession(json);
+    return json.data.user;
+  }, [syncAdminSession]);
+
+  const logout = useCallback(async (): Promise<void> => {
     try {
       await fetch(API_ENDPOINTS.logout, {
         method: "POST",
@@ -223,9 +256,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem("admin_email");
       localStorage.removeItem("admin_role");
     }
-  };
+  }, []);
 
-  const updateProfile = async (name: string, email: string): Promise<User> => {
+  const updateProfile = useCallback(async (name: string, email: string): Promise<User> => {
     const response = await fetch(API_ENDPOINTS.profile, {
       method: "PUT",
       headers: {
@@ -250,21 +283,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     return updatedUser;
-  };
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      signup,
+      loginWithGoogle,
+      logout,
+      updateProfile,
+    }),
+    [user, loading, login, signup, loginWithGoogle, logout, updateProfile]
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        signup,
-        logout,
-        updateProfile,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 };
 

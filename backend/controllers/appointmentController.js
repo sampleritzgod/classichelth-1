@@ -102,7 +102,7 @@ export const createAppointment = async (req, res, next) => {
 export const getAppointments = async (req, res, next) => {
   try {
     // Fetch all documents from the "appointments" collection
-    const appointments = await Appointment.find().sort({ createdAt: -1 });
+    const appointments = await Appointment.find().sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,
@@ -121,7 +121,7 @@ export const getAppointments = async (req, res, next) => {
  */
 export const getMyAppointments = async (req, res, next) => {
   try {
-    const appointments = await Appointment.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const appointments = await Appointment.find({ user: req.user._id }).sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,
@@ -149,8 +149,15 @@ export const getAppointmentTimeline = async (req, res, next) => {
       });
     }
 
-    // Ensure the requester owns the appointment or is an admin
-    if (appointment.user && appointment.user.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+    // Authorize: admins/superadmins can view any timeline; otherwise the
+    // requester must own the appointment. Guest/unlinked appointments
+    // (appointment.user is null) are never exposed to non-admins, preventing
+    // an IDOR where any authenticated user could read others' timelines.
+    const isAdmin = req.user.role === "admin" || req.user.role === "superadmin";
+    const ownsAppointment =
+      appointment.user && appointment.user.toString() === req.user._id.toString();
+
+    if (!isAdmin && !ownsAppointment) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to access this timeline",
@@ -189,25 +196,33 @@ export const checkSlots = async (req, res, next) => {
     endOfDay.setHours(23, 59, 59, 999);
 
     const targetService = service || "all";
-    const slotStatus = [];
+    const ACTIVE_STATUSES = ["pending", "under_review", "confirmed", "rescheduled", "completed"];
 
-    for (const slot of STANDARD_SLOTS) {
-      const availability = await checkSlotAvailability(targetDate, slot, targetService);
-      
-      // Get the number of booked appointments for this slot
-      const bookedCount = await Appointment.countDocuments({
+    // Fetch the day's active appointments once and count per slot in memory,
+    // instead of issuing a countDocuments query per slot (removes N+1).
+    const [dayAppointments, ...availabilities] = await Promise.all([
+      Appointment.find({
         date: { $gte: startOfDay, $lte: endOfDay },
-        timeSlot: slot,
-        status: { $in: ["pending", "under_review", "confirmed", "rescheduled", "completed"] },
-      });
+        status: { $in: ACTIVE_STATUSES },
+      })
+        .select("timeSlot")
+        .lean(),
+      ...STANDARD_SLOTS.map((slot) =>
+        checkSlotAvailability(targetDate, slot, targetService)
+      ),
+    ]);
 
-      slotStatus.push({
-        timeSlot: slot,
-        capacity: availability.capacity,
-        bookedCount,
-        available: availability.available,
-      });
-    }
+    const bookedCounts = dayAppointments.reduce((acc, appt) => {
+      acc[appt.timeSlot] = (acc[appt.timeSlot] || 0) + 1;
+      return acc;
+    }, {});
+
+    const slotStatus = STANDARD_SLOTS.map((slot, i) => ({
+      timeSlot: slot,
+      capacity: availabilities[i].capacity,
+      bookedCount: bookedCounts[slot] || 0,
+      available: availabilities[i].available,
+    }));
 
     res.status(200).json({
       success: true,

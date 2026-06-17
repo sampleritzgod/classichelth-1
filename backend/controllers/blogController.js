@@ -14,7 +14,11 @@ export const getPublishedBlogs = async (req, res, next) => {
       query.category = category;
     }
 
-    const blogs = await Blog.find(query).sort({ publishedAt: -1 });
+    // List view doesn't need the full article body; exclude it to cut payload.
+    const blogs = await Blog.find(query)
+      .select("-content")
+      .sort({ publishedAt: -1 })
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -33,7 +37,7 @@ export const getPublishedBlogs = async (req, res, next) => {
  */
 export const getBlogBySlug = async (req, res, next) => {
   try {
-    const blog = await Blog.findOne({ slug: req.params.slug, isPublished: true });
+    const blog = await Blog.findOne({ slug: req.params.slug, isPublished: true }).lean();
 
     if (!blog) {
       return res.status(404).json({
@@ -58,7 +62,7 @@ export const getBlogBySlug = async (req, res, next) => {
  */
 export const getAdminBlogs = async (req, res, next) => {
   try {
-    const blogs = await Blog.find().sort({ createdAt: -1 });
+    const blogs = await Blog.find().select("-content").sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,

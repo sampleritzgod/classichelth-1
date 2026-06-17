@@ -5,11 +5,17 @@ import { queueService } from "./queueService.js";
 dotenv.config();
 
 const SMTP_USER = process.env.SMTP_EMAIL || process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASSWORD || process.env.SMTP_PASS;
+// Gmail App Passwords are often copied with spaces; normalize before use.
+const SMTP_PASS = (process.env.SMTP_PASSWORD || process.env.SMTP_PASS || "").replace(/\s+/g, "");
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT, 10) || 587;
-const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || "u1stcreation1993@gmail.com";
+const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 const FRONTEND_URL = process.env.FRONTEND_URL || "https://your-first-creation.vercel.app";
+
+// Recipient for admin/clinic notifications (new bookings, inquiries, orders).
+// Configurable; defaults to the authenticated mailbox rather than a hardcoded address.
+export const ADMIN_EMAIL =
+  process.env.ADMIN_EMAIL || process.env.SMTP_EMAIL || SMTP_USER;
 
 // Validate SMTP config. If not configured, print warnings and run in mock mode
 const isMailConfigured = !!(SMTP_HOST && SMTP_USER && SMTP_PASS);
@@ -26,11 +32,49 @@ if (isMailConfigured) {
       pass: SMTP_PASS,
     },
   });
+
+  // Warn loudly about a common silent-failure cause: From not matching the
+  // authenticated Gmail account. Gmail will accept then drop/rewrite such mail.
+  if (
+    SMTP_HOST.includes("gmail") &&
+    SMTP_FROM &&
+    SMTP_USER &&
+    SMTP_FROM.toLowerCase() !== SMTP_USER.toLowerCase()
+  ) {
+    console.warn(
+      `[Mailer] WARNING: SMTP_FROM (${SMTP_FROM}) does not match SMTP_USER (${SMTP_USER}). ` +
+        "Gmail may silently drop these messages. Set SMTP_FROM to the authenticated address or a verified alias."
+    );
+  }
 } else {
   console.warn(
     "⚠️ Mailer warning: SMTP credentials are not configured. Running mailer in MOCK mode (logging to console)."
   );
 }
+
+/**
+ * Verify SMTP connectivity/credentials at startup so misconfiguration is
+ * surfaced immediately instead of failing silently per-email.
+ */
+export const verifyMailTransport = async () => {
+  if (!isMailConfigured || !transporter) {
+    console.warn("[Mailer] Skipping verification: running in MOCK mode (no SMTP credentials).");
+    return false;
+  }
+  try {
+    await transporter.verify();
+    console.log(
+      `[Mailer] SMTP transport verified. host=${SMTP_HOST} port=${SMTP_PORT} user=${SMTP_USER} from=${SMTP_FROM}`
+    );
+    return true;
+  } catch (error) {
+    console.error(
+      `[Mailer] SMTP verification FAILED. host=${SMTP_HOST} port=${SMTP_PORT} user=${SMTP_USER}. ` +
+        `Emails will not be delivered. Reason: ${error.message}`
+    );
+    return false;
+  }
+};
 
 /**
  * Base email layout wrapper to maintain cream/green premium wellness aesthetic
@@ -143,28 +187,48 @@ const getHtmlTemplate = (title, contentHtml) => {
  * Send an email (mock fallback if credentials are not specified)
  */
 export const sendMailDirect = async ({ to, subject, html, text }) => {
+  const fromAddress = SMTP_FROM || `"U 1st Creation" <${SMTP_USER}>`;
+
   if (isMailConfigured && transporter) {
+    console.log(
+      `[Mailer] Sending email | from=${fromAddress} | to=${to} | subject="${subject}"`
+    );
     try {
       const info = await transporter.sendMail({
-        from: SMTP_FROM || `"U 1st Creation" <${SMTP_USER}>`,
+        from: fromAddress,
         to,
         subject,
         text,
         html,
       });
-      console.log(`✉️ Email successfully sent to ${to}: ${info.messageId}`);
+      // Detailed delivery telemetry: messageId, SMTP server response, and the
+      // recipients the server actually accepted vs. rejected.
+      console.log(
+        `[Mailer] SENT OK | to=${to} | messageId=${info.messageId} | ` +
+          `response="${info.response || ""}" | accepted=${JSON.stringify(info.accepted || [])} | ` +
+          `rejected=${JSON.stringify(info.rejected || [])}`
+      );
+      if (info.rejected && info.rejected.length > 0) {
+        console.warn(
+          `[Mailer] PARTIAL FAILURE | recipients rejected by SMTP server: ${JSON.stringify(info.rejected)}`
+        );
+      }
       return info;
     } catch (error) {
-      console.error(`❌ Failed to send email to ${to}:`, error);
+      console.error(
+        `[Mailer] SEND FAILED | to=${to} | subject="${subject}" | ` +
+          `code=${error.code || "n/a"} | response="${error.response || ""}" | reason=${error.message}`
+      );
       throw error;
     }
   } else {
     console.log("\n================ [MOCK EMAIL OUTBOX] ================");
+    console.log(`From:    ${fromAddress}`);
     console.log(`To:      ${to}`);
     console.log(`Subject: ${subject}`);
     console.log(`Text:\n${text}`);
     console.log("=====================================================\n");
-    return { mock: true, messageId: `mock_${Date.now()}` };
+    return { mock: true, messageId: `mock_${Date.now()}`, accepted: [to], rejected: [] };
   }
 };
 
@@ -344,7 +408,7 @@ export const sendBookingStatusUpdate = async (email, name, appointment) => {
  * Send Admin Appointment Notification Email
  */
 export const sendAdminAppointmentNotification = async (appointment) => {
-  const adminEmail = process.env.SMTP_EMAIL || "u1stcreation1993@gmail.com";
+  const adminEmail = ADMIN_EMAIL;
   const subject = `[New Booking] Appointment with ${appointment.name}`;
   
   const dateStr = new Date(appointment.date).toLocaleDateString(undefined, {
@@ -421,7 +485,7 @@ export const sendAdminAppointmentNotification = async (appointment) => {
  * Send Admin Message/Inquiry Notification Email
  */
 export const sendAdminMessageNotification = async (message) => {
-  const adminEmail = process.env.SMTP_EMAIL || "u1stcreation1993@gmail.com";
+  const adminEmail = ADMIN_EMAIL;
   const subject = `[New Contact Inquiry] from ${message.name}`;
 
   const text = `New Contact Form Inquiry Details:\n\n` +
@@ -550,7 +614,7 @@ export const sendProductOrderConfirmation = async (email, name, order) => {
  * Send Admin Product Order Notification Email
  */
 export const sendAdminProductOrderNotification = async (order, customerName, customerEmail) => {
-  const adminEmail = process.env.SMTP_EMAIL || "u1stcreation1993@gmail.com";
+  const adminEmail = ADMIN_EMAIL;
   const subject = `[New Sale] Order from ${customerName}`;
   const itemsListHtml = order.items
     .map(

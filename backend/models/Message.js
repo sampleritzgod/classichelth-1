@@ -53,6 +53,8 @@ messageSchema.index({ createdAt: -1 });
 messageSchema.index({ isRead: 1 });
 messageSchema.index({ isStarred: 1 });
 messageSchema.index({ isArchived: 1 });
+// Default inbox view: non-archived messages newest first
+messageSchema.index({ isArchived: 1, createdAt: -1 });
 
 const Message = mongoose.model("Message", messageSchema);
 

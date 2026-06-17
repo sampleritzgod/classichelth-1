@@ -7,8 +7,10 @@ import Notification from "../models/Notification.js";
  */
 export const getNotifications = async (req, res, next) => {
   try {
-    const notifications = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 });
-    const unreadCount = await Notification.countDocuments({ user: req.user._id, isRead: false });
+    const [notifications, unreadCount] = await Promise.all([
+      Notification.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(100).lean(),
+      Notification.countDocuments({ user: req.user._id, isRead: false }),
+    ]);
 
     res.status(200).json({
       success: true,

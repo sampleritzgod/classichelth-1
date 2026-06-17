@@ -33,7 +33,7 @@ const router = express.Router();
 
 // Apply auth protection to all administrative routes
 router.use(protect);
-router.use(restrictTo("admin"));
+router.use(restrictTo("admin", "superadmin"));
 
 // Dashboard stats endpoint
 router.get("/dashboard/stats", getDashboardStats);

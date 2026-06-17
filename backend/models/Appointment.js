@@ -127,6 +127,14 @@ appointmentSchema.pre("save", function (next) {
 // Indexes for rapid sorting and filtering in the admin panel
 appointmentSchema.index({ date: 1 });
 appointmentSchema.index({ status: 1 });
+// User's own appointments, newest first (getMyAppointments)
+appointmentSchema.index({ user: 1, createdAt: -1 });
+// Admin list / latest bookings sorted by creation time
+appointmentSchema.index({ createdAt: -1 });
+// Slot availability checks (date + timeSlot + status)
+appointmentSchema.index({ date: 1, timeSlot: 1, status: 1 });
+// Reminder scheduler sweeps (status + date + reminder flags)
+appointmentSchema.index({ status: 1, date: 1, reminder24hSent: 1, reminder1hSent: 1 });
 
 // Compound unique index on date, time slot, and slot index to prevent double-booking for active slots
 appointmentSchema.index(

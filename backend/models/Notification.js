@@ -35,6 +35,8 @@ const notificationSchema = new mongoose.Schema(
 );
 
 notificationSchema.index({ user: 1, isRead: 1 });
+// User's notification feed, newest first
+notificationSchema.index({ user: 1, createdAt: -1 });
 
 const Notification = mongoose.model("Notification", notificationSchema);
 

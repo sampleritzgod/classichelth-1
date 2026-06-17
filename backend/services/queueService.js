@@ -21,6 +21,10 @@ class TaskQueue {
   }
 
   getDedupKey(task) {
+    // Prefer an explicit, caller-provided dedup key so legitimate repeat sends
+    // (e.g. an admin manually re-sending a confirmation) are NOT suppressed by
+    // hashing identical content. Only fall back to a content hash when no
+    // explicit key is supplied.
     if (task.dedupKey) return task.dedupKey;
     const contents = `${task.type}-${JSON.stringify(task.recipient)}-${task.title}-${task.body}`;
     return crypto.createHash("md5").update(contents).digest("hex");
@@ -80,30 +84,46 @@ class TaskQueue {
   }
 
   async executeTask(task) {
+    const recipientLabel =
+      typeof task.recipient === "string"
+        ? task.recipient
+        : `${task.recipient?.length || 0} token(s)`;
     try {
       if (task.type === "email") {
+        console.log(
+          `[Queue Service] Email trigger | ID=${task.id} | recipient=${recipientLabel} | subject="${task.title}"`
+        );
         const { sendMailDirect } = await import("./mailService.js");
-        await sendMailDirect({
+        const info = await sendMailDirect({
           to: task.recipient,
           subject: task.title,
           html: task.body,
           text: task.data.text || task.title
         });
+        console.log(
+          `[Queue Service] Email task completed | ID=${task.id} | status=SUCCESS | messageId=${info?.messageId || "n/a"}`
+        );
+        return;
       } else if (task.type === "push") {
+        console.log(`[Queue Service] Push trigger | ID=${task.id} | recipient=${recipientLabel}`);
         const { sendPushDirect } = await import("./fcmService.js");
         await sendPushDirect(task.recipient, task.title, task.body, task.data);
       }
       console.log(`[Queue Service] Task completed successfully: ID = ${task.id}`);
     } catch (error) {
-      console.error(`[Queue Service] Task execution failed: ID = ${task.id}, Error = ${error.message}`);
-      
+      console.error(
+        `[Queue Service] Task FAILED | ID=${task.id} | type=${task.type} | recipient=${recipientLabel} | status=FAILURE | reason=${error.message}`
+      );
+
       if (task.retries > 0) {
         task.retries--;
         // Re-enqueue for retry
         this.queue.push(task);
         console.log(`[Queue Service] Task scheduled for retry (${3 - task.retries}/3): ID = ${task.id}`);
       } else {
-        console.error(`[Queue Service] Task failed permanently: ID = ${task.id}`);
+        console.error(
+          `[Queue Service] Task failed PERMANENTLY (giving up) | ID=${task.id} | recipient=${recipientLabel}`
+        );
       }
     }
   }

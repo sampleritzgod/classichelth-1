@@ -1,13 +1,21 @@
 import Appointment from "../models/Appointment.js";
 import Message from "../models/Message.js";
-import Notification from "../models/Notification.js";
 import BookingCapacity from "../models/BookingCapacity.js";
-import { notifyUser } from "../services/socketService.js";
+import { appointmentEvents } from "../services/eventService.js";
 import {
   sendInquiryReply,
   sendBookingConfirmation,
-  sendBookingStatusUpdate,
 } from "../services/mailService.js";
+
+/**
+ * Escape user-supplied input before using it in a RegExp to prevent
+ * regex injection / ReDoS via catastrophic backtracking. Also caps length.
+ */
+const buildSafeSearchRegex = (input) => {
+  const trimmed = String(input).slice(0, 100);
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(escaped, "i");
+};
 
 /**
  * @desc    Get all appointments (with optional search, status filtering, and sorting)
@@ -26,7 +34,7 @@ export const getAdminAppointments = async (req, res, next) => {
 
     // 2. Search query (name, email, phone, condition)
     if (search) {
-      const searchRegex = new RegExp(search, "i");
+      const searchRegex = buildSafeSearchRegex(search);
       query.$or = [
         { name: searchRegex },
         { email: searchRegex },
@@ -45,7 +53,7 @@ export const getAdminAppointments = async (req, res, next) => {
       sortBy = { date: -1 };
     }
 
-    const appointments = await Appointment.find(query).sort(sortBy);
+    const appointments = await Appointment.find(query).sort(sortBy).lean();
 
     res.status(200).json({
       success: true,
@@ -108,6 +116,7 @@ export const updateAppointmentStatus = async (req, res, next) => {
       });
     }
 
+    const previousStatus = appointment.status;
     const statusChanged = appointment.status !== status;
     appointment.status = status;
     
@@ -129,42 +138,15 @@ export const updateAppointmentStatus = async (req, res, next) => {
 
     await appointment.save();
 
-    if (statusChanged) {
-      // Trigger status update email (doesn't block the API response)
-      sendBookingStatusUpdate(appointment.email, appointment.name, {
-        date: appointment.date,
-        time: appointment.timeSlot,
-        service: appointment.service,
-        status: appointment.status,
-      }).catch((err) => {
-        console.error("Failed to send status update email:", err.message);
-      });
-    }
-
-    // Create Notification and trigger Socket.IO notification if user is associated
-    if (appointment.user) {
-      const displayStatus = status.replace("_", " ").toUpperCase();
-      await Notification.create({
-        user: appointment.user,
-        appointment: appointment._id,
-        type: "status_update",
-        title: `Appointment Status: ${displayStatus}`,
-        message: statusMessage || `Your appointment status has been updated to ${status.replace("_", " ")}.`,
-      });
-
-      // Notify user of appointment update
-      notifyUser(appointment.user.toString(), "appointment_updated", {
-        appointmentId: appointment._id,
-        status,
+    // Route all side effects (email + in-app + socket + FCM + admin fan-out)
+    // through the central event bus so user and admin notifications stay in sync.
+    const hasMessage = statusMessage !== undefined && statusMessage !== "";
+    if (statusChanged || hasMessage) {
+      appointmentEvents.emit("appointment.statusChanged", {
+        appointment,
+        oldStatus: previousStatus,
+        newStatus: appointment.status,
         statusMessage,
-        date: appointment.date,
-        timeSlot: appointment.timeSlot,
-      });
-
-      // Notify user of new notification count
-      const unreadCount = await Notification.countDocuments({ user: appointment.user, isRead: false });
-      notifyUser(appointment.user.toString(), "notifications_updated", {
-        unreadCount,
       });
     }
 
@@ -223,42 +205,14 @@ export const updateAppointment = async (req, res, next) => {
 
     await appointment.save();
 
+    // Centralize all status-change side effects through the event bus.
     if (statusChanged) {
-      sendBookingStatusUpdate(appointment.email, appointment.name, {
-        date: appointment.date,
-        time: appointment.timeSlot,
-        service: appointment.service,
-        status: appointment.status,
-      }).catch((err) => {
-        console.error("Failed to send status update email on PUT:", err.message);
+      appointmentEvents.emit("appointment.statusChanged", {
+        appointment,
+        oldStatus,
+        newStatus: appointment.status,
+        statusMessage: statusMessage !== undefined ? statusMessage : appointment.statusMessage,
       });
-
-      // Create Notification and trigger Socket.IO notification if user is associated
-      if (appointment.user) {
-        const displayStatus = appointment.status.replace("_", " ").toUpperCase();
-        await Notification.create({
-          user: appointment.user,
-          appointment: appointment._id,
-          type: "status_update",
-          title: `Appointment Status: ${displayStatus}`,
-          message: statusMessage || `Your appointment status has been updated to ${appointment.status.replace("_", " ")}.`,
-        });
-
-        // Notify user of appointment update
-        notifyUser(appointment.user.toString(), "appointment_updated", {
-          appointmentId: appointment._id,
-          status: appointment.status,
-          statusMessage: appointment.statusMessage,
-          date: appointment.date,
-          timeSlot: appointment.timeSlot,
-        });
-
-        // Notify user of new notification count
-        const unreadCount = await Notification.countDocuments({ user: appointment.user, isRead: false });
-        notifyUser(appointment.user.toString(), "notifications_updated", {
-          unreadCount,
-        });
-      }
     }
 
     res.status(200).json({
@@ -337,69 +291,84 @@ export const deleteAppointment = async (req, res, next) => {
  */
 export const getDashboardStats = async (req, res, next) => {
   try {
-    // 1. Basic Counts
-    const totalAppointments = await Appointment.countDocuments();
-    const pendingAppointments = await Appointment.countDocuments({ status: "pending" });
-    const confirmedAppointments = await Appointment.countDocuments({ status: "confirmed" });
-    const completedAppointments = await Appointment.countDocuments({ status: "completed" });
-    const cancelledAppointments = await Appointment.countDocuments({ status: "cancelled" });
-    const underReviewAppointments = await Appointment.countDocuments({ status: "under_review" });
-    const rescheduledAppointments = await Appointment.countDocuments({ status: "rescheduled" });
-
-    // 2. Today's Appointments (Scheduled for today)
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const appointmentsToday = await Appointment.countDocuments({
-      date: { $gte: todayStart, $lte: todayEnd },
-    });
+    // Status counts in a single aggregation instead of 7 sequential queries.
+    const statusGroupsPromise = Appointment.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } },
+    ]);
 
-    // 3. Message Stats
-    const totalMessages = await Message.countDocuments();
-    const unreadMessages = await Message.countDocuments({ isRead: false });
+    // Last 7 days density in a single aggregation instead of a query-per-day.
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - 6);
+    weekStart.setHours(0, 0, 0, 0);
+    const dailyAggPromise = Appointment.aggregate([
+      { $match: { date: { $gte: weekStart, $lte: todayEnd }, status: { $ne: "cancelled" } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
 
-    // 4. Latest Bookings
-    const latestBookings = await Appointment.find()
-      .sort({ createdAt: -1 })
-      .limit(5);
+    const interventionFilter = {
+      $or: [{ status: "under_review" }, { interventionRequired: true }],
+    };
 
-    // 5. Daily Bookings density history for the last 7 days (including today)
+    // Run all independent queries concurrently.
+    const [
+      totalAppointments,
+      statusGroups,
+      appointmentsToday,
+      totalMessages,
+      unreadMessages,
+      latestBookings,
+      dailyAgg,
+      interventionQueue,
+      interventionCount,
+    ] = await Promise.all([
+      Appointment.countDocuments(),
+      statusGroupsPromise,
+      Appointment.countDocuments({ date: { $gte: todayStart, $lte: todayEnd } }),
+      Message.countDocuments(),
+      Message.countDocuments({ isRead: false }),
+      Appointment.find().sort({ createdAt: -1 }).limit(5).lean(),
+      dailyAggPromise,
+      Appointment.find(interventionFilter).sort({ date: 1 }).limit(10).lean(),
+      Appointment.countDocuments(interventionFilter),
+    ]);
+
+    const statusCount = (s) =>
+      statusGroups.find((g) => g._id === s)?.count || 0;
+
+    // Build the last 7 days (including today) from the aggregation map.
+    const dailyMap = dailyAgg.reduce((acc, d) => {
+      acc[d._id] = d.count;
+      return acc;
+    }, {});
     const dailyStats = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const start = new Date(d); start.setHours(0, 0, 0, 0);
-      const end = new Date(d); end.setHours(23, 59, 59, 999);
-
-      const count = await Appointment.countDocuments({
-        date: { $gte: start, $lte: end },
-        status: { $ne: "cancelled" },
-      });
-
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+        d.getDate()
+      ).padStart(2, "0")}`;
       dailyStats.push({
         date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-        count,
+        count: dailyMap[key] || 0,
       });
     }
 
-    // 6. Admin Intervention Exception Queue
-    const interventionQueue = await Appointment.find({
-      $or: [
-        { status: "under_review" },
-        { interventionRequired: true }
-      ]
-    })
-      .sort({ date: 1 })
-      .limit(10);
-
-    const interventionCount = await Appointment.countDocuments({
-      $or: [
-        { status: "under_review" },
-        { interventionRequired: true }
-      ]
-    });
+    const pendingAppointments = statusCount("pending");
+    const confirmedAppointments = statusCount("confirmed");
+    const completedAppointments = statusCount("completed");
+    const cancelledAppointments = statusCount("cancelled");
+    const underReviewAppointments = statusCount("under_review");
+    const rescheduledAppointments = statusCount("rescheduled");
 
     res.status(200).json({
       success: true,
@@ -455,7 +424,7 @@ export const getAdminMessages = async (req, res, next) => {
     }
 
     if (search) {
-      const searchRegex = new RegExp(search, "i");
+      const searchRegex = buildSafeSearchRegex(search);
       query.$or = [
         { name: searchRegex },
         { email: searchRegex },
@@ -463,7 +432,7 @@ export const getAdminMessages = async (req, res, next) => {
       ];
     }
 
-    const messages = await Message.find(query).sort({ createdAt: -1 });
+    const messages = await Message.find(query).sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,

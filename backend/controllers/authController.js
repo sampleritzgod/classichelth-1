@@ -1,15 +1,15 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { verifyFirebaseIdToken } from "../services/firebaseAuthService.js";
 
 // Helper function to sign JWT token
 const signToken = (id) => {
-  return jwt.sign(
-    { id },
-    process.env.JWT_SECRET || "your_jwt_secret_key_here_change_in_production",
-    {
-      expiresIn: "7d",
-    }
-  );
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is not configured. Refusing to sign a token.");
+  }
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
 };
 
 // Helper function to send token in cookie
@@ -97,6 +97,86 @@ export const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Incorrect email or password.",
+      });
+    }
+
+    sendTokenResponse(user, 200, req, res);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @desc    Authenticate (or register) a user via Google using a Firebase ID token
+ * @route   POST /api/v1/auth/google
+ * @access  Public
+ *
+ * Flow:
+ *  1. Frontend completes Google popup sign-in via Firebase and obtains an ID token.
+ *  2. We verify that token with firebase-admin (rejecting forged/expired tokens).
+ *  3. If a user with that googleId exists -> log in.
+ *  4. Else if a user with the same email exists -> link the Google identity.
+ *  5. Else -> create a new Google-based account (onboarding).
+ *  6. Issue our own JWT session cookie (same as email/password login).
+ */
+export const googleAuth = async (req, res, next) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken || typeof idToken !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "Missing Google ID token.",
+      });
+    }
+
+    let profile;
+    try {
+      profile = await verifyFirebaseIdToken(idToken);
+    } catch (verifyErr) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired Google sign-in token.",
+      });
+    }
+
+    if (!profile.email) {
+      return res.status(400).json({
+        success: false,
+        message: "Google account did not provide an email address.",
+      });
+    }
+
+    const normalizedEmail = profile.email.toLowerCase();
+
+    // 1. Existing Google account
+    let user = await User.findOne({ googleId: profile.uid });
+
+    // 2. Link to an existing local account with the same email
+    if (!user) {
+      user = await User.findOne({ email: normalizedEmail });
+      if (user) {
+        user.googleId = profile.uid;
+        // Keep the account's original provider semantics but record the link.
+        if (user.authProvider === "local") {
+          // Account now supports both password and Google sign-in.
+        }
+        if (!user.avatar && profile.picture) {
+          user.avatar = profile.picture;
+        }
+        await user.save();
+      }
+    }
+
+    // 3. New user onboarding
+    if (!user) {
+      user = await User.create({
+        name: profile.name,
+        email: normalizedEmail,
+        authProvider: "google",
+        googleId: profile.uid,
+        avatar: profile.picture,
+        role: "user",
       });
     }
 

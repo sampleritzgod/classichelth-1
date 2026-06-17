@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
   adminProducts: `${API_URL}/api/v1/products`,
   signup: `${API_URL}/api/v1/auth/signup`,
   login: `${API_URL}/api/v1/auth/login`,
+  google: `${API_URL}/api/v1/auth/google`,
   logout: `${API_URL}/api/v1/auth/logout`,
   authMe: `${API_URL}/api/v1/auth/me`,
   profile: `${API_URL}/api/v1/auth/profile`,

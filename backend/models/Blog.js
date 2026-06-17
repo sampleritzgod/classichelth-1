@@ -84,6 +84,10 @@ blogSchema.pre("save", function (next) {
   next();
 });
 
+// Public listing: published blogs (optionally by category) newest first
+blogSchema.index({ isPublished: 1, publishedAt: -1 });
+blogSchema.index({ isPublished: 1, category: 1, publishedAt: -1 });
+
 const Blog = mongoose.model("Blog", blogSchema);
 
 export default Blog;

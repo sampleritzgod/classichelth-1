@@ -22,9 +22,18 @@ import { initSocket } from "./services/socketService.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 import { initNotificationService } from "./services/notificationService.js";
 import { initScheduler } from "./services/reminderScheduler.js";
+import { verifyMailTransport } from "./services/mailService.js";
 
 // Load environment variables
 dotenv.config();
+
+// Fail fast on missing critical secrets to avoid running with insecure defaults
+if (!process.env.JWT_SECRET) {
+  console.error(
+    "[Server] FATAL: JWT_SECRET is not set. Refusing to start with an insecure default."
+  );
+  process.exit(1);
+}
 
 // Connect to Database
 connectDB();
@@ -35,6 +44,10 @@ if (!fs.existsSync("./uploads")) {
 }
 
 const app = express();
+
+// Trust the reverse proxy (Render/Vercel/nginx) so req.ip and rate limiting
+// reflect the real client address rather than the proxy hop.
+app.set("trust proxy", 1);
 
 // Request logging middleware
 if (process.env.NODE_ENV === "development") {
@@ -65,13 +78,22 @@ app.use(
       if (!origin) return callback(null, true);
       
       const isProd = process.env.NODE_ENV === "production";
-      
-      // Check if the origin matches any of our allowed domains
-      const isAllowed = allowedOrigins.some((allowedOpt) => {
+
+      // Exact match against the explicitly allowed origins (CORS_ORIGIN).
+      const matchesAllowList = allowedOrigins.some((allowedOpt) => {
         const cleanAllowed = allowedOpt.trim().replace(/\/$/, "");
         const cleanOrigin = origin.trim().replace(/\/$/, "");
         return cleanAllowed === cleanOrigin;
-      }) || origin.includes("localhost") || origin.includes("127.0.0.1") || origin.includes("vercel.app");
+      });
+
+      // Outside production, also allow local development hosts for convenience.
+      // In production we ONLY trust the explicit allow-list (no wildcard
+      // *.vercel.app / localhost bypass).
+      const isLocalDevOrigin =
+        !isProd &&
+        (origin.includes("localhost") || origin.includes("127.0.0.1"));
+
+      const isAllowed = matchesAllowList || isLocalDevOrigin;
 
       if (isAllowed) {
         return callback(null, true);
@@ -92,20 +114,34 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting for auth routes
-const authLimiter = rateLimit({
+// Strict rate limiting for login to mitigate credential stuffing / brute force
+const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 10, // Limit each IP to 10 login attempts per windowMs
   message: {
     success: false,
-    message: "Too many requests from this IP, please try again after 15 minutes",
+    message: "Too many login attempts from this IP, please try again after 15 minutes",
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.use("/api/v1/auth/login", authLimiter);
-app.use("/api/v1/auth/signup", authLimiter);
+// Moderate rate limiting for account creation
+const signupLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20, // Limit each IP to 20 signups per hour
+  message: {
+    success: false,
+    message: "Too many accounts created from this IP, please try again later",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Applied to the single canonical auth mount (see route registration below)
+app.use("/api/v1/auth/login", loginLimiter);
+app.use("/api/v1/auth/google", loginLimiter);
+app.use("/api/v1/auth/signup", signupLimiter);
 
 // Rate limiting for contact form and payment creation to prevent script abuse
 const formAndPaymentLimiter = rateLimit({
@@ -140,7 +176,6 @@ app.use("/api/v1", productRoutes);
 app.use("/api/v1", messageRoutes);
 app.use("/api/v1", blogRoutes);
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/auth", authRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 
@@ -158,6 +193,9 @@ initSocket(server, allowedOrigins);
 // Initialize automated notification event listeners and reminder loops
 initNotificationService();
 initScheduler();
+
+// Verify SMTP connectivity at startup so email misconfiguration is loud, not silent
+verifyMailTransport();
 
 server.listen(PORT, () => {
   console.log(

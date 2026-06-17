@@ -2,6 +2,7 @@ import express from "express";
 import {
   signup,
   login,
+  googleAuth,
   logout,
   getMe,
   updateProfile,
@@ -18,6 +19,7 @@ const router = express.Router();
 
 router.post("/signup", validateSignup, signup);
 router.post("/login", validateLogin, login);
+router.post("/google", googleAuth);
 router.post("/logout", logout);
 router.get("/me", protect, getMe);
 router.put("/profile", protect, validateProfileUpdate, updateProfile);

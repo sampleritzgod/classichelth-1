@@ -7,7 +7,7 @@ import {
   checkSlots,
 } from "../controllers/appointmentController.js";
 import { validateAppointment } from "../middleware/validateAppointment.js";
-import { protect } from "../middleware/authMiddleware.js";
+import { protect, restrictTo } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -18,10 +18,10 @@ router.get("/appointments/check-slots", checkSlots);
 router.get("/appointments/my", protect, getMyAppointments);
 router.get("/appointments/:id/timeline", protect, getAppointmentTimeline);
 
-// POST /api/v1/appointments - Create an appointment
-// GET /api/v1/appointments - Get all appointments
+// POST /api/v1/appointments - Create an appointment (authenticated users)
+// GET  /api/v1/appointments - List all appointments (admins only; contains PII)
 router.route("/appointments")
   .post(protect, validateAppointment, createAppointment)
-  .get(getAppointments);
+  .get(protect, restrictTo("admin", "superadmin"), getAppointments);
 
 export default router;

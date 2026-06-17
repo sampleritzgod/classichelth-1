@@ -1,11 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { getWhatsAppUrl, openWhatsApp } from "@/utils/whatsapp";
 import { useAuth } from "@/context/AuthContext";
 import { useNotifications } from "@/context/NotificationContext";
-import AuthModals from "@/components/AuthModals";
 import Link from "next/link";
+
+// Auth modal is only needed once the user opens it; load it on demand so its
+// code (and the Firebase Google sign-in path it triggers) stays out of the
+// initial navbar bundle shipped on every page.
+const AuthModals = dynamic(() => import("@/components/AuthModals"), { ssr: false });
 import { usePathname } from "next/navigation";
 import { API_ENDPOINTS } from "@/config";
 import { resolveImageUrl } from "@/utils/image";
@@ -516,12 +521,14 @@ export default function Navbar() {
         )}
       </nav>
 
-      {/* Real Auth Modals */}
-      <AuthModals
-        isOpen={authModalOpen}
-        initialMode={authModalMode}
-        onClose={() => setAuthModalOpen(false)}
-      />
+      {/* Real Auth Modals (loaded on demand when opened) */}
+      {authModalOpen && (
+        <AuthModals
+          isOpen={authModalOpen}
+          initialMode={authModalMode}
+          onClose={() => setAuthModalOpen(false)}
+        />
+      )}
 
       {/* Interactive Cart Drawer */}
       {isCartOpen && (

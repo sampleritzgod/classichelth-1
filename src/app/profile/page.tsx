@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
-import { API_ENDPOINTS, API_URL } from "@/config";
-import { io } from "socket.io-client";
+import { useNotifications } from "@/context/NotificationContext";
+import { API_ENDPOINTS } from "@/config";
 
 interface Appointment {
   _id: string;
@@ -40,6 +40,7 @@ interface NotificationItem {
 
 export default function ProfilePage() {
   const { user, loading, updateProfile } = useAuth();
+  const { subscribe } = useNotifications();
   const router = useRouter();
 
   // Active Tab state
@@ -156,38 +157,22 @@ export default function ProfilePage() {
     }
   }, [user, fetchAppointments, fetchNotifications]);
 
-  // WebSockets Setup for Real-Time Updates
+  // Real-time updates via the single shared socket (NotificationContext).
+  // No separate socket connection is opened here.
   useEffect(() => {
     if (!user) return;
 
-    // Connect to backend Socket.IO
-    console.log("[Socket.IO] Connecting to:", API_URL);
-    const socket = io(API_URL, {
-      transports: ["websocket", "polling"],
-      withCredentials: true,
-    });
-
-    socket.on("connect", () => {
-      console.log("[Socket.IO] Connected. Joining room:", user._id);
-      socket.emit("join", user._id);
-    });
-
-    // Handle real-time status changes
-    socket.on("appointment_updated", (data) => {
-      console.log("[Socket.IO] Live Appointment Update Received:", data);
-      fetchAppointments();
-    });
-
-    // Handle live notification updates
-    socket.on("notifications_updated", (data) => {
-      console.log("[Socket.IO] Live Notifications Update Received:", data);
-      fetchNotifications();
-    });
+    const unsubscribers = [
+      subscribe("appointment_updated", () => fetchAppointments()),
+      subscribe("appointment_created", () => fetchAppointments()),
+      subscribe("appointment_reminder", () => fetchAppointments()),
+      subscribe("notifications_updated", () => fetchNotifications()),
+    ];
 
     return () => {
-      socket.disconnect();
+      unsubscribers.forEach((off) => off());
     };
-  }, [user, fetchAppointments, fetchNotifications]);
+  }, [user, subscribe, fetchAppointments, fetchNotifications]);
 
   // Update Profile details
   const handleUpdateProfile = async (e: React.FormEvent) => {

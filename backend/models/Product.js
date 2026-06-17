@@ -80,6 +80,9 @@ const productSchema = new mongoose.Schema(
   }
 );
 
+// Public catalog: available products by category, newest first
+productSchema.index({ isAvailable: 1, category: 1, createdAt: -1 });
+
 const Product = mongoose.model("Product", productSchema);
 
 export default Product;

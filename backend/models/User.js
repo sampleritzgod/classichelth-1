@@ -21,7 +21,14 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, "Please provide a password"],
+      // Password is only required for local (email/password) accounts.
+      // Google (OAuth) accounts authenticate via the provider and have none.
+      required: [
+        function () {
+          return this.authProvider === "local";
+        },
+        "Please provide a password",
+      ],
       minlength: [6, "Password must be at least 6 characters long"],
       select: false, // Don't return password by default in queries
     },
@@ -29,6 +36,21 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["user", "admin", "superadmin"],
       default: "user",
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+    },
+    googleId: {
+      type: String,
+      // Sparse + unique: only enforced for accounts that have a googleId.
+      unique: true,
+      sparse: true,
+    },
+    avatar: {
+      type: String,
+      default: "",
     },
     fcmTokens: {
       type: [String],

@@ -20,7 +20,7 @@ export const getProducts = async (req, res, next) => {
       query.isAvailable = { $ne: false };
     }
 
-    const products = await Product.find(query).sort({ createdAt: -1 });
+    const products = await Product.find(query).sort({ createdAt: -1 }).lean();
 
     res.status(200).json({
       success: true,
@@ -115,11 +115,38 @@ export const createProduct = async (req, res, next) => {
  * @route   PUT /api/v1/products/:id
  * @access  Private (Admin)
  */
+// Fields a client is permitted to update on a product. Anything else in the
+// request body (e.g. _id, __v, injected operator keys) is ignored.
+const PRODUCT_UPDATABLE_FIELDS = [
+  "name",
+  "price",
+  "originalPrice",
+  "image",
+  "category",
+  "alt",
+  "ingredients",
+  "benefits",
+  "usage",
+  "faqs",
+  "testimonials",
+  "description",
+  "inStock",
+  "isFeatured",
+  "isAvailable",
+];
+
 export const updateProduct = async (req, res, next) => {
   try {
+    const updates = {};
+    for (const field of PRODUCT_UPDATABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
     const product = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updates,
       {
         new: true,
         runValidators: true,

@@ -1,6 +1,23 @@
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
 
 let io = null;
+
+/**
+ * Extract a JWT from the socket handshake (auth payload, query, or cookie).
+ */
+const extractHandshakeToken = (socket) => {
+  const { auth, query, headers } = socket.handshake;
+  if (auth && typeof auth.token === "string" && auth.token) return auth.token;
+  if (query && typeof query.token === "string" && query.token) return query.token;
+
+  const cookieHeader = headers?.cookie;
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)token=([^;]+)/);
+    if (match) return decodeURIComponent(match[1]);
+  }
+  return null;
+};
 
 /**
  * Initialize Socket.IO server
@@ -16,20 +33,41 @@ export const initSocket = (serverInstance, allowedOrigins) => {
     },
   });
 
-  io.on("connection", (socket) => {
-    console.log(`[Socket.IO] Client connected: ${socket.id}`);
+  // Authenticate every socket connection. A verified user id is bound to the
+  // socket so a client can only ever join its own private room.
+  io.use((socket, next) => {
+    try {
+      const token = extractHandshakeToken(socket);
+      if (!token) {
+        return next(new Error("Authentication required"));
+      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      socket.userId = decoded.id;
+      return next();
+    } catch (err) {
+      return next(new Error("Invalid authentication token"));
+    }
+  });
 
-    // Join room based on user ID
-    socket.on("join", (userId) => {
-      if (userId) {
-        console.log(`[Socket.IO] Client ${socket.id} joined room: ${userId}`);
-        socket.join(userId);
+  io.on("connection", (socket) => {
+    // Automatically join the authenticated user's own room. The legacy "join"
+    // event is honored only when it matches the authenticated identity, so a
+    // client can never subscribe to another user's notifications.
+    if (socket.userId) {
+      socket.join(socket.userId.toString());
+    }
+
+    socket.on("join", (requestedUserId) => {
+      if (
+        requestedUserId &&
+        socket.userId &&
+        requestedUserId.toString() === socket.userId.toString()
+      ) {
+        socket.join(socket.userId.toString());
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
-    });
+    socket.on("disconnect", () => {});
   });
 
   return io;

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { API_ENDPOINTS } from "@/config";
 import { getWhatsAppUrl, openWhatsApp, WHATSAPP_TEMPLATES } from "@/utils/whatsapp";
+import { useNotifications } from "@/context/NotificationContext";
 
 interface Appointment {
   _id: string;
@@ -29,6 +30,7 @@ const CLINIC_SERVICES = [
 ];
 
 export default function AdminAppointments() {
+  const { subscribe } = useNotifications();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +119,15 @@ export default function AdminAppointments() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [search, status, sort, fetchAppointments]);
+
+  // Live refresh when a booking is created or its status changes (shared socket).
+  useEffect(() => {
+    const unsubscribers = [
+      subscribe("admin_appointment_created", () => fetchAppointments()),
+      subscribe("admin_appointment_updated", () => fetchAppointments()),
+    ];
+    return () => unsubscribers.forEach((off) => off());
+  }, [subscribe, fetchAppointments]);
 
   // Update Status handler
   const handleStatusChange = async (id: string, newStatus: string) => {

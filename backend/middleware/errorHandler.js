@@ -17,8 +17,11 @@ const errorHandler = (err, req, res, next) => {
 
   // 2. Mongoose Duplicate Key Error
   if (err.code === 11000) {
-    const value = err.errmsg.match(/(["'])(\\?.)*?\1/)[0];
-    const message = `Duplicate field value: ${value}. Please use another value!`;
+    // Use the modern driver's keyValue (errmsg is deprecated and may be absent).
+    const field = err.keyValue ? Object.keys(err.keyValue)[0] : null;
+    const message = field
+      ? `An account with that ${field} already exists. Please use another value.`
+      : "Duplicate value. Please use another value.";
     error = new AppError(message, 400);
   }
 

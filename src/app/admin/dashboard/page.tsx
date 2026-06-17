@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { API_ENDPOINTS } from "@/config";
+import { useNotifications } from "@/context/NotificationContext";
 
 interface DashboardStats {
   appointments: {
@@ -58,6 +59,7 @@ interface CapacityOverride {
 }
 
 export default function AdminDashboard() {
+  const { subscribe } = useNotifications();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +82,7 @@ export default function AdminDashboard() {
   const [newTime, setNewTime] = useState("09:00 AM");
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -104,7 +106,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const fetchCapacityOverrides = async () => {
     try {
@@ -127,7 +129,16 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
+
+  // Live dashboard refresh on new/updated bookings (shared socket).
+  useEffect(() => {
+    const unsubscribers = [
+      subscribe("admin_appointment_created", () => fetchStats()),
+      subscribe("admin_appointment_updated", () => fetchStats()),
+    ];
+    return () => unsubscribers.forEach((off) => off());
+  }, [subscribe, fetchStats]);
 
   useEffect(() => {
     if (activeSubTab === "capacity") {
