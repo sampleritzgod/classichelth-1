@@ -10,12 +10,12 @@ export const metadata: Metadata = {
     "Explore holistic guidelines, clinical notes, and daily lifestyle practices from our therapeutic team.",
 };
 
-// Revalidate the published blog list every hour (ISR).
-export const revalidate = 3600;
+// Disable static caching for blogs list to ensure new posts are visible immediately
+export const revalidate = 0;
 
 async function getBlogs(): Promise<BlogItem[]> {
   try {
-    const res = await fetch(API_ENDPOINTS.blogs, { next: { revalidate: 3600 } });
+    const res = await fetch(API_ENDPOINTS.blogs, { cache: "no-store" });
     if (!res.ok) return [];
     const json = await res.json();
     return json.success ? json.data : [];

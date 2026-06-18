@@ -31,6 +31,18 @@ const nextConfig: NextConfig = {
         port: "5005",
         pathname: "/uploads/**",
       },
+      // Cloudinary remote storage
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/**",
+      },
+      // Vercel Blob remote storage
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+        pathname: "/**",
+      },
     ],
   },
   // Drop console.* in production bundles (keep warn/error for diagnostics).

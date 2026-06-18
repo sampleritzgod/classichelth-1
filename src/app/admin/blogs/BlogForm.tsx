@@ -14,6 +14,11 @@ export default function BlogForm({ blogId }: BlogFormProps) {
   const [fetching, setFetching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Upload states
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   // Form fields
   const [title, setTitle] = useState("");
   const [snippet, setSnippet] = useState("");
@@ -72,20 +77,70 @@ export default function BlogForm({ blogId }: BlogFormProps) {
     fetchBlogData();
   }, [blogId]);
 
-  // Handle local image file upload converting to Base64
+  // Handle local image file upload converting and uploading separately
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("Image file size should be less than 2MB.");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result as string); // base64 string
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // 1. Frontend validation for image size (5MB limit)
+    const maxFileSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxFileSize) {
+      setUploadError("Image file size exceeds the 5MB limit. Please choose a smaller image.");
+      return;
     }
+
+    // Reset states
+    setUploading(true);
+    setUploadProgress(0);
+    setUploadError(null);
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    const xhr = new XMLHttpRequest();
+    
+    // Configure upload endpoint
+    const uploadUrl = API_ENDPOINTS.adminUpload || `${API_ENDPOINTS.adminBlogs.replace("/blogs", "/upload")}`;
+    xhr.open("POST", uploadUrl, true);
+    
+    // Auth Header
+    const token = localStorage.getItem("admin_token") || "";
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+
+    // Track Progress
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = Math.round((event.loaded / event.total) * 100);
+        setUploadProgress(percentComplete);
+      }
+    };
+
+    // Request Completed
+    xhr.onload = () => {
+      setUploading(false);
+      setUploadProgress(null);
+      
+      try {
+        const response = JSON.parse(xhr.responseText);
+        if (xhr.status === 200 && response.success) {
+          setImage(response.imageUrl);
+          setUploadError(null);
+        } else {
+          setUploadError(response.message || "Failed to upload image.");
+        }
+      } catch (err) {
+        setUploadError("Error parsing server response.");
+      }
+    };
+
+    // Error Handling
+    xhr.onerror = () => {
+      setUploading(false);
+      setUploadProgress(null);
+      setUploadError("Network error occurred during upload. Please check your connection.");
+    };
+
+    xhr.send(formData);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -227,14 +282,36 @@ export default function BlogForm({ blogId }: BlogFormProps) {
             {/* Upload File */}
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-foreground/50 mb-1.5">
-                Upload Image File (Base64)
+                Upload Image File (Max 5MB)
               </label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
-                className="block w-full text-xs text-foreground/60 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/15 file:cursor-pointer"
+                disabled={uploading}
+                className="block w-full text-xs text-foreground/60 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/15 file:cursor-pointer disabled:opacity-50"
               />
+              
+              {uploading && (
+                <div className="w-full mt-3">
+                  <div className="flex justify-between items-center mb-1 text-[10px] font-bold text-primary">
+                    <span>Uploading to server...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-foreground/10 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      className="bg-primary h-1.5 rounded-full transition-all duration-150"
+                      style={{ width: `${uploadProgress || 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+
+              {uploadError && (
+                <p className="text-red-600 text-xs font-semibold mt-2 flex items-center gap-1">
+                  <span>⚠️</span> {uploadError}
+                </p>
+              )}
             </div>
 
             {/* Manual URL */}
@@ -331,7 +408,7 @@ export default function BlogForm({ blogId }: BlogFormProps) {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploading}
             className="px-6 py-2.5 bg-primary text-white rounded-full text-xs font-semibold hover:bg-primary-hover cursor-pointer disabled:opacity-50 shadow-md shadow-primary/10"
           >
             {loading ? "Saving article..." : "Save Entry"}

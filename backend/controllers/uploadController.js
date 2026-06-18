@@ -1,3 +1,6 @@
+import { uploadFile } from "../utils/storage.js";
+import fs from "fs";
+
 /**
  * @desc    Upload an image file
  * @route   POST /api/v1/admin/upload
@@ -12,17 +15,26 @@ export const uploadImage = async (req, res, next) => {
       });
     }
 
-    // Construct the relative path that will be stored in the database
-    const relativePath = `/uploads/${req.file.filename}`;
+    // Upload to Cloudinary / Vercel Blob / Local Storage
+    const imageUrl = await uploadFile(req.file);
 
-    console.log(`[Upload Controller] Image uploaded successfully. Stored path: ${relativePath}`);
+    console.log(`[Upload Controller] Image uploaded successfully. URL: ${imageUrl}`);
 
     return res.status(200).json({
       success: true,
       message: "Image uploaded successfully",
-      imageUrl: relativePath,
+      imageUrl: imageUrl,
     });
   } catch (error) {
+    // Make sure to clean up the uploaded local file if there's an error during Cloudinary/Vercel Blob upload
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.error("Failed to delete temp file:", err);
+      }
+    }
     next(error);
   }
 };
+

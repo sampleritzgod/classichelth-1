@@ -64,11 +64,11 @@ export const validateBlog = (req, res, next) => {
   if (typeof image !== "string") {
     errors.image = "Image must be a valid URL or Base64 string";
   } else {
-    const isUrl = image.startsWith("http://") || image.startsWith("https://") || image.startsWith("/images/");
+    const isUrl = image.startsWith("http://") || image.startsWith("https://") || image.startsWith("/images/") || image.startsWith("/uploads/");
     const isBase64 = image.startsWith("data:image/");
 
     if (!isUrl && !isBase64) {
-      errors.image = "Image must be a valid http/https URL, local path, or base64 data URI";
+      errors.image = "Image must be a valid http/https URL, local path (starting with /images/ or /uploads/), or base64 data URI";
     }
 
     if (isBase64) {

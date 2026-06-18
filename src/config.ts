@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
   messages: `${API_URL}/api/v1/messages`,
   blogs: `${API_URL}/api/v1/blogs`,
   adminBlogs: `${API_URL}/api/v1/admin/blogs`,
+  adminUpload: `${API_URL}/api/v1/admin/upload`,
   adminStats: `${API_URL}/api/v1/admin/dashboard/stats`,
   adminAppointments: `${API_URL}/api/v1/admin/appointments`,
   adminMessages: `${API_URL}/api/v1/admin/messages`,

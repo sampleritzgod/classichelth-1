@@ -20,13 +20,13 @@ interface BlogItem {
   publishedAt: string;
 }
 
-// Revalidate each article every hour (ISR).
-export const revalidate = 3600;
+// Disable static caching for blog posts to ensure updates/new posts are visible immediately
+export const revalidate = 0;
 
 async function getBlog(slug: string): Promise<BlogItem | null> {
   try {
     const res = await fetch(`${API_ENDPOINTS.blogs}/${encodeURIComponent(slug)}`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     if (!res.ok) return null;
     const json = await res.json();
