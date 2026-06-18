@@ -105,16 +105,24 @@ export const getAdminBlogById = async (req, res, next) => {
  * @access  Private (Admin)
  */
 export const createBlog = async (req, res, next) => {
+  const caller = req.user ? `${req.user.email} (${req.user.role})` : "Unauthenticated";
+  console.log(`[Blog Controller] Create blog request received from: ${caller}`);
+  console.log(`[Blog Controller] Request Body Keys: ${Object.keys(req.body).join(", ")}`);
+
   try {
     const { title, snippet, content, image, category, isPublished, seoTitle, seoDescription } = req.body;
 
+    console.log(`[Blog Controller] Incoming attributes: Title="${title}" Category="${category}" ImageURL="${image ? (image.length > 50 ? image.substring(0, 50) + "..." : image) : "None"}"`);
+
     if (!title || !snippet || !content || !image || !category) {
+      console.warn(`[Blog Controller] Rejected: Missing required fields.`);
       return res.status(400).json({
         success: false,
         message: "Please fill in all required fields: title, snippet, content, image, category",
       });
     }
 
+    console.log(`[Blog Controller] Persisting blog to database...`);
     const blog = await Blog.create({
       title,
       snippet,
@@ -126,12 +134,15 @@ export const createBlog = async (req, res, next) => {
       seoDescription: seoDescription || snippet,
     });
 
+    console.log(`[Blog Controller] Blog post persisted successfully. ID: ${blog._id}, Slug: ${blog.slug}`);
+
     res.status(201).json({
       success: true,
       message: "Blog post created successfully",
       data: blog,
     });
   } catch (error) {
+    console.error(`[Blog Controller] Blog creation failed: ${error.message}`);
     next(error);
   }
 };

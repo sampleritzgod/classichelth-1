@@ -32,33 +32,77 @@ if (typeof window !== "undefined") {
       const newInit = { ...init };
       newInit.credentials = "include";
       
-      // Add Authorization header if token exists in localStorage and is not already provided
+      // Add Authorization header if token exists in localStorage
       const token = localStorage.getItem("token") || localStorage.getItem("admin_token");
       if (token) {
         if (!newInit.headers) {
           newInit.headers = {};
         }
-        
-        if (newInit.headers instanceof Headers) {
-          if (!newInit.headers.has("Authorization")) {
+
+        const getAuthValue = (headers: any): string | null => {
+          if (headers instanceof Headers) {
+            return headers.get("Authorization");
+          } else if (Array.isArray(headers)) {
+            const entry = headers.find(h => h[0].toLowerCase() === "authorization");
+            return entry ? entry[1] : null;
+          } else if (headers && typeof headers === "object") {
+            const key = Object.keys(headers).find(k => k.toLowerCase() === "authorization");
+            return key ? headers[key] : null;
+          }
+          return null;
+        };
+
+        const authVal = getAuthValue(newInit.headers);
+        // If no Authorization header is present, or if it is empty/mock, override it
+        const shouldOverride = !authVal || authVal === "Bearer " || authVal === "Bearer mock_token";
+
+        if (shouldOverride) {
+          if (newInit.headers instanceof Headers) {
             newInit.headers.set("Authorization", `Bearer ${token}`);
-          }
-        } else if (Array.isArray(newInit.headers)) {
-          const hasAuth = newInit.headers.some(h => h[0].toLowerCase() === "authorization");
-          if (!hasAuth) {
-            newInit.headers.push(["Authorization", `Bearer ${token}`]);
-          }
-        } else {
-          // It's a Record<string, string>
-          const headersRecord = newInit.headers as Record<string, string>;
-          const hasAuth = Object.keys(headersRecord).some(k => k.toLowerCase() === "authorization");
-          if (!hasAuth) {
+          } else if (Array.isArray(newInit.headers)) {
+            const index = newInit.headers.findIndex(h => h[0].toLowerCase() === "authorization");
+            if (index !== -1) {
+              newInit.headers[index][1] = `Bearer ${token}`;
+            } else {
+              newInit.headers.push(["Authorization", `Bearer ${token}`]);
+            }
+          } else {
+            const headersRecord = newInit.headers as Record<string, string>;
+            // Delete lowercase version if present
+            delete headersRecord["authorization"];
             headersRecord["Authorization"] = `Bearer ${token}`;
           }
         }
       }
       
-      return originalFetch(input, newInit);
+      return originalFetch(input, newInit).then((response) => {
+        // 1. Capture refreshed token from header
+        const refreshToken = response.headers.get("X-Refresh-Token");
+        if (refreshToken) {
+          console.log("[Fetch Interceptor] Captured refreshed JWT session token from backend.");
+          localStorage.setItem("token", refreshToken);
+          if (localStorage.getItem("admin_role") === "admin" || localStorage.getItem("admin_role") === "superadmin") {
+            localStorage.setItem("admin_token", refreshToken);
+          }
+        }
+
+        // 2. Intercept 401 Unauthorized errors (excluding active login attempts)
+        if (response.status === 401 && !url.includes("/api/v1/auth/login")) {
+          console.warn("[Fetch Interceptor] 401 Unauthorized received. Session expired or token invalid.");
+          
+          localStorage.removeItem("token");
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_email");
+          localStorage.removeItem("admin_role");
+
+          // Dispatch redirect to login if we are in the admin portal
+          if (window.location.pathname.startsWith("/admin") && window.location.pathname !== "/admin/login") {
+            window.location.href = "/admin/login?expired=true";
+          }
+        }
+
+        return response;
+      });
     }
     
     return originalFetch(input, init);

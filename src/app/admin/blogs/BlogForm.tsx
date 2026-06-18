@@ -99,12 +99,15 @@ export default function BlogForm({ blogId }: BlogFormProps) {
 
     const xhr = new XMLHttpRequest();
     
+    // Enable sending cookies along with XMLHttpRequest
+    xhr.withCredentials = true;
+    
     // Configure upload endpoint
     const uploadUrl = API_ENDPOINTS.adminUpload || `${API_ENDPOINTS.adminBlogs.replace("/blogs", "/upload")}`;
     xhr.open("POST", uploadUrl, true);
     
     // Auth Header
-    const token = localStorage.getItem("admin_token") || "";
+    const token = localStorage.getItem("admin_token") || localStorage.getItem("token") || "";
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
 
     // Track Progress
